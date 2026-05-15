@@ -1,7 +1,7 @@
 const http = require("http");
 const fs = require("fs-extra");
 const path = require("path");
-const login = require("fca-unofficial");
+const { login } = require("ws3-fca");
 
 // ══════════════════════════════════════════
 // CONFIG
@@ -290,7 +290,7 @@ function startBot() {
   console.log("════════════════════════════════════");
   console.log("[LOGIN] 🔄 جاري الاتصال بفيسبوك...");
 
-  login({ appState }, (err, api) => {
+  login(appState, { logLevel: "silent", listenEvents: true, autoMarkDelivery: false, autoMarkRead: false, selfListen: false, forceLogin: true }, (err, api) => {
     if (err) {
       console.error("[LOGIN] ❌ فشل الاتصال:", err.message || err);
 
@@ -313,7 +313,6 @@ function startBot() {
       listenEvents: true,
       selfListen: false,
       logLevel: "silent",
-      forceLogin: false,
       updatePresence: false,
       autoMarkDelivery: false,
       autoMarkRead: false
@@ -326,18 +325,20 @@ function startBot() {
     console.log("[BOT] 🟢 البوت يستمع للرسائل...\n");
 
     // الاستماع للأحداث
-    api.listenMqtt((err, event) => {
+    api.listen((err, event) => {
       if (err) {
-        console.error("[LISTEN ERROR]", err.message || err);
+        console.error("[LISTEN ERROR]", JSON.stringify(err));
 
         // إعادة الاتصال عند انقطاع الاتصال
+        const errStr = JSON.stringify(err);
         if (
-          err.error === "Not logged in" ||
-          err.error === "Connection closed" ||
-          err.type === "stop_listening"
+          errStr.includes("Not logged in") ||
+          errStr.includes("Connection closed") ||
+          errStr.includes("stop_listening") ||
+          errStr.includes("1357004")
         ) {
-          console.log("[BOT] 🔄 إعادة الاتصال...");
-          setTimeout(startBot, 10000);
+          console.log("[BOT] 🔄 إعادة الاتصال بعد 15 ثانية...");
+          setTimeout(startBot, 15000);
         }
         return;
       }
