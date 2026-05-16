@@ -10,6 +10,7 @@
     "axios": "^1.16.1",
     "canvas": "^2.11.2",
     "fs-extra": "^11.3.5",
+    "moment-timezone": "^0.6.2",
     "ws3-fca": "^2.0.1"
   }
 }
