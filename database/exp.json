@@ -1,126 +1,31 @@
 {
-  "61578447308545": {
-    "exp": 16,
-    "currentLevel": 1,
-    "levelUpExp": 500
+  "61577272315598": {
+    "exp": 31,
+    "currentLevel": 3,
+    "levelUpExp": 720
   },
-  "100079668997780": {
-    "exp": 18,
+  "100069438967266": {
+    "exp": 125,
     "currentLevel": 1,
     "levelUpExp": 500
   },
   "100090081489341": {
-    "exp": 430,
-    "currentLevel": 1,
-    "levelUpExp": 500
+    "exp": 551,
+    "currentLevel": 2,
+    "levelUpExp": 600
   },
-  "61577972684341": {
-    "exp": 26,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61588108307572": {
-    "exp": 88,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61581827102601": {
-    "exp": 74,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100081948980908": {
-    "exp": 144,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100095025457763": {
-    "exp": 10,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100086554046276": {
-    "exp": 9,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61585901355005": {
-    "exp": 8,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61587030015233": {
-    "exp": 36,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100067795549892": {
-    "exp": 55,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61573334176409": {
-    "exp": 1,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61580701115582": {
-    "exp": 13,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61576798913659": {
-    "exp": 40,
+  "61583632364472": {
+    "exp": 102,
     "currentLevel": 1,
     "levelUpExp": 500
   },
   "61576654040606": {
-    "exp": 70,
+    "exp": 147,
     "currentLevel": 1,
     "levelUpExp": 500
   },
-  "100055281426133": {
-    "exp": 3,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61577548296098": {
-    "exp": 31,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61579333002025": {
-    "exp": 7,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100038222326816": {
-    "exp": 60,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100083105042361": {
-    "exp": 20,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61553120759018": {
-    "exp": 4,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61589532364425": {
-    "exp": 4,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61581113385212": {
-    "exp": 15,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100069438967266": {
-    "exp": 40,
+  "61576808304436": {
+    "exp": 12,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -129,58 +34,323 @@
     "currentLevel": 1,
     "levelUpExp": 500
   },
-  "61567797081994": {
+  "61589897700595": {
+    "exp": 29,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61577327281497": {
+    "exp": 111,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61588084666413": {
+    "exp": 5,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61560755351798": {
+    "exp": 5,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61589812946202": {
+    "exp": 83,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61584174339536": {
+    "exp": 5,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61589645620146": {
+    "exp": 242,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100089557812161": {
+    "exp": 182,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61576798913659": {
+    "exp": 173,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100089565191395": {
+    "exp": 78,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100086362624539": {
+    "exp": 66,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61589223938032": {
+    "exp": 174,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61578447308545": {
+    "exp": 29,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61581057683503": {
+    "exp": 149,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61581827102601": {
+    "exp": 96,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61581084159930": {
+    "exp": 16,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61578060574020": {
     "exp": 2,
     "currentLevel": 1,
     "levelUpExp": 500
   },
-  "100051757543072": {
-    "exp": 4,
+  "61555129387578": {
+    "exp": 37,
     "currentLevel": 1,
     "levelUpExp": 500
   },
-  "100002086988290": {
+  "61573334176409": {
+    "exp": 170,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61562946702689": {
     "exp": 9,
     "currentLevel": 1,
     "levelUpExp": 500
   },
-  "100050585616103": {
+  "61562932292395": {
+    "exp": 121,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100055281426133": {
+    "exp": 9,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61577402799868": {
+    "exp": 150,
+    "currentLevel": 2,
+    "levelUpExp": 600
+  },
+  "61580378742571": {
+    "exp": 3,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61586334572083": {
+    "exp": 93,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61570689021318": {
+    "exp": 12,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100002592426874": {
+    "exp": 7,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61586450846662": {
+    "exp": 19,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100067795549892": {
+    "exp": 44,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61585457137026": {
+    "exp": 25,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61556919297306": {
+    "exp": 11,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61589429315905": {
+    "exp": 5,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61584506454953": {
+    "exp": 56,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100086554046276": {
+    "exp": 433,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100073646403977": {
+    "exp": 5,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61561125190239": {
+    "exp": 27,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61551921744802": {
+    "exp": 11,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61573928192508": {
+    "exp": 10,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61587013097234": {
+    "exp": 59,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100087595305769": {
+    "exp": 3,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61577551034296": {
+    "exp": 83,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100081948980908": {
+    "exp": 58,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61583087433240": {
+    "exp": 28,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61589632494666": {
+    "exp": 3,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61585661493817": {
+    "exp": 1,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61588108307572": {
+    "exp": 163,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61563738496733": {
+    "exp": 92,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61561224890737": {
+    "exp": 31,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61553956954214": {
+    "exp": 315,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100090941401743": {
+    "exp": 20,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61585774030593": {
+    "exp": 8,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100051757543072": {
+    "exp": 52,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61566202044181": {
+    "exp": 2,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "100093830586134": {
+    "exp": 3,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61564762606518": {
+    "exp": 7,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61578076173468": {
+    "exp": 36,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61579637246798": {
+    "exp": 11,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61577945056985": {
+    "exp": 3,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61572011364524": {
+    "exp": 21,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61552280349095": {
+    "exp": 2,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61585763739501": {
     "exp": 4,
     "currentLevel": 1,
     "levelUpExp": 500
   },
   "100080750382273": {
-    "exp": 1,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61564374854065": {
-    "exp": 6,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100066038671561": {
     "exp": 2,
     "currentLevel": 1,
     "levelUpExp": 500
   },
-  "61589514487050": {
+  "61587068690819": {
+    "exp": 13,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61583174314166": {
     "exp": 4,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61575413207001": {
-    "exp": 2,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "100090941401743": {
-    "exp": 4,
-    "currentLevel": 1,
-    "levelUpExp": 500
-  },
-  "61551406192828": {
-    "exp": 40,
     "currentLevel": 1,
     "levelUpExp": 500
   }

@@ -1,5 +1,6 @@
 const moment = require("moment-timezone");
 const fs = require("fs-extra");
+const path = require("path");
 
 const jobs = [
   { work: "كاشير سوبرماركت", msg: "حسبت 5+5 = 11، المدير انتبه وخصم من راتبك عشان تشتري حاسبة!" },
@@ -54,64 +55,80 @@ const jobs = [
   { work: "مطور بوتات فاشل", msg: "نسيت فاصلة والكود خرب والسكربت صار يسبك." }
 ];
 
+// مسار حفظ كول داون العمل لضمان عدم تصفيره عند ريستارت البوت
+const cooldownFilePath = path.join(__dirname, "modules", "commands", "cache", "workCooldowns.json");
+
 module.exports.config = {
   name: "عمل",
-  version: "1.7.0",
+  version: "1.8.5",
   hasPermssion: 0,
   credits: "Abdou",
-  description: "العمل لكسب المال مع سيناريوهات مضحكة (كل 6 ساعات)",
+  description: "العمل لكسب المال مع سيناريوهات مضحكة (تضاف الأرباح للبنك مباشرة)",
   commandCategory: "العاب",
   usages: "",
   cooldowns: 5
 };
 
-const cooldownFile = require("path").join(__dirname, "cache", "workCooldown.json");
-
 module.exports.run = async function({ api, event, Economy }) {
   const { threadID, messageID, senderID } = event;
-  const cooldownTime = 6 * 60 * 60 * 1000;
+  const cooldownTime = 6 * 60 * 60 * 1000; // 6 ساعات
 
-  try {
-    fs.ensureDirSync(require("path").dirname(cooldownFile));
-    if (!fs.existsSync(cooldownFile)) fs.writeJsonSync(cooldownFile, {});
-  } catch {}
-
+  // قراءة ملف الكول داون الثابت أو إنشائه إن لم يكن موجوداً
   let cooldownData = {};
-  try { cooldownData = fs.readJsonSync(cooldownFile); } catch {}
+  try {
+    fs.ensureDirSync(path.dirname(cooldownFilePath));
+    if (fs.existsSync(cooldownFilePath)) {
+      cooldownData = JSON.parse(fs.readFileSync(cooldownFilePath, "utf8"));
+    }
+  } catch (e) {
+    console.error("[WORK COOLDOWN READ ERROR]", e.message);
+  }
 
   const lastWork = cooldownData[String(senderID)] || 0;
-  if (Date.now() - lastWork < cooldownTime) {
-    const timeLeft = cooldownTime - (Date.now() - lastWork);
+  const timePassed = Date.now() - lastWork;
+
+  // التحقق الحقيقي من مرور الـ 6 ساعات بدقة
+  if (lastWork !== 0 && timePassed < cooldownTime) {
+    const timeLeft = cooldownTime - timePassed;
     const hours = Math.floor(timeLeft / (1000 * 60 * 60));
     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
     return api.sendMessage(
-      `⚠️ عيوني أنت تعبان! ارتاح شوية..\n🕒 عُد بعد: ${hours} ساعة و ${minutes} دقيقة`,
-      threadID, messageID
+      `⚠️ عيوني أنت تعبان! ارتاح شوية..\n🕒 عُد بعد: ${hours} ساعة و ${minutes} دقيقة`, 
+      threadID, 
+      messageID
     );
   }
 
   const job = jobs[Math.floor(Math.random() * jobs.length)];
   const salary = Math.floor(Math.random() * 151) + 50;
 
-  const newBankBalance = await Economy.increase(salary, senderID, "bank");
-  const currentCash = await Economy.getBalance(senderID, "money");
+  try {
+    // إيداع الأرباح في البنك مباشرة عبر متحكم النواة
+    const newBankBalance = await Economy.increase(salary, senderID, "bank");
+    // جلب رصيد الكاش الحالي من النواة ليعرض بدقة
+    const currentCash = await Economy.getBalance(senderID, "money");
 
-  cooldownData[String(senderID)] = Date.now();
-  try { fs.writeJsonSync(cooldownFile, cooldownData); } catch {}
+    // حفظ وقت العمل الحالي في الملف ليكون ثابتاً ومقاوماً للـ Restart
+    cooldownData[String(senderID)] = Date.now();
+    fs.writeFileSync(cooldownFilePath, JSON.stringify(cooldownData, null, 2));
 
-  const msg =
-    `●─────── ✾ ───────●\n` +
-    ` ⦿ ⟬ نَتِيجَةُ الْعَمَلِ 💼 ⟭ ⦿\n` +
-    `⊱ ────────────── ⊰\n` +
-    ` ⟣ 🛠️ الْعَمَلُ: ${job.work}\n` +
-    `⊱ ────────────── ⊰\n` +
-    ` ⟣ 📖 ${job.msg}\n` +
-    `⊱ ────────────── ⊰\n` +
-    ` ⟣ 🏦 الأرباح (في البنك): +${salary}$\n` +
-    ` ⟣ 💳 رصيد البنك الإجمالي: ${newBankBalance}$\n` +
-    ` ⟣ 👛 الكاش الحالي: ${currentCash}$\n` +
-    ` ⟣ 🕒 عُدْ بَعْدَ 6 سَاعَاتٍ\n` +
-    `●─────── ✾ ───────●`;
+    const msg = `●─────── ✾ ───────●\n` +
+                `  ⦿ ⟬ نَتِيجَةُ الْعَمَلِ 💼 ⟭ ⦿\n` +
+                `⊱ ────────────── ⊰\n` +
+                `  ⟣ 🛠️ الْعَمَلُ: ${job.work}\n` +
+                `⊱ ────────────── ⊰\n` +
+                `  ⟣ 📖 ${job.msg}\n` +
+                `⊱ ────────────── ⊰\n` +
+                `  ⟣ 🏦 الأرباح (في البنك): +${salary}$\n` +
+                `  ⟣ 🏛️ رصيد البنك الإجمالي: ${newBankBalance.toLocaleString()}$\n` +
+                `  ⟣ 💵 الكاش الحالي: ${currentCash.toLocaleString()}$\n` +
+                `  ⟣ 🕒 عُدْ بَعْدَ 6 سَاعَاتٍ\n` +
+                `●─────── ✾ ───────●`;
 
-  return api.sendMessage(msg, threadID, messageID);
+    return api.sendMessage(msg, threadID, messageID);
+  } catch (err) {
+    console.error("[WORK ERROR]", err);
+    return api.sendMessage("❌ حدث خطأ أثناء الاتصال بنظام الاقتصاد الخاص بالنواة.", threadID, messageID);
+  }
 };

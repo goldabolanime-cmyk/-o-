@@ -1,4 +1,4 @@
-const http = require("http");
+Const http = require("http");
 const fs = require("fs-extra");
 const path = require("path");
 const { login } = require("ws3-fca");
@@ -17,6 +17,9 @@ try {
 const PREFIX = config.prefix || ".";
 const OWNER_IDS = (config.ownerBot || []).map(String);
 
+// مسار حفظ بادئات المجموعات (يتطابق مع أمر بادئة.js)
+const prefixDataPath = path.join(__dirname, "modules", "commands", "cache", "threadPrefixes.json");
+
 // ══════════════════════════════════════════
 // GLOBAL CLIENT
 // ══════════════════════════════════════════
@@ -25,7 +28,11 @@ global.client = {
   handleEvent: [],
   commands: new Map(),
   events: new Map(),
-  config
+  config,
+  maintenance: {
+    isRestricted: false,
+    timeoutRef: null
+  }
 };
 
 // ══════════════════════════════════════════
@@ -70,13 +77,17 @@ function loadCommands() {
   for (const file of files) {
     try {
       delete require.cache[require.resolve(path.join(dir, file))];
-      const cmd = require(path.join(dir, file));
-      const name = cmd.config?.name;
+      let cmd = require(path.join(dir, file));
+
+      const configData = cmd.config || (cmd.default?.config);
+      const name = configData?.name;
+
       if (!name) continue;
+
       global.client.commands.set(name, cmd);
-      // تسجيل الأسماء المستعارة
-      if (Array.isArray(cmd.config.aliases)) {
-        for (const alias of cmd.config.aliases) {
+
+      if (configData && Array.isArray(configData.aliases)) {
+        for (const alias of configData.aliases) {
           global.client.commands.set(alias, cmd);
         }
       }
@@ -110,6 +121,45 @@ function loadEvents() {
       console.error(`[EVT] ❌ ${file}: ${e.message}`);
     }
   }
+}
+
+// ══════════════════════════════════════════
+// 🧠 خوارزمية التخمين الذكي
+// ══════════════════════════════════════════
+function stringSimilarity(s1, s2) {
+  let longer = s1;
+  let shorter = s2;
+  if (s1.length < s2.length) {
+    longer = s2;
+    shorter = s1;
+  }
+  let longerLength = longer.length;
+  if (longerLength === 0) return 1.0;
+
+  return (longerLength - editDistance(longer, shorter)) / longerLength;
+}
+
+function editDistance(s1, s2) {
+  s1 = s1.toLowerCase();
+  s2 = s2.toLowerCase();
+  let costs = new Array();
+  for (let i = 0; i <= s1.length; i++) {
+    let lastValue = i;
+    for (let j = 0; j <= s2.length; j++) {
+      if (i == 0) costs[j] = j;
+      else {
+        if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) != s2.charAt(j - 1))
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+    }
+    if (i > 0) costs[s2.length] = lastValue;
+  }
+  return costs[s2.length];
 }
 
 // ══════════════════════════════════════════
@@ -205,7 +255,7 @@ const Economy = {
   }
 };
 
-// ── Currencies (واجهة متوافقة مع GoatBot) ─
+// ── Currencies ─────────────────────────
 const Currencies = {
   getData: async (uid) => {
     const data = readJSON(ECONOMY_PATH);
@@ -240,7 +290,7 @@ const Currencies = {
 };
 
 // ══════════════════════════════════════════
-// SHARED CONTEXT (يُمرَّر لكل أمر وحدث)
+// SHARED CONTEXT
 // ══════════════════════════════════════════
 function getCtx(api, event) {
   return { api, event, Users, Economy, Currencies, Exp, Threads };
@@ -252,24 +302,33 @@ function getCtx(api, event) {
 async function handleMessage(api, event) {
   const { threadID, messageID, senderID, body, type, messageReply } = event;
 
-  // XP لكل رسالة
+  // 🛡️ [جدار حماية التقييد والصيانة]
+  if (global.client.maintenance && global.client.maintenance.isRestricted) {
+    if (!OWNER_IDS.includes(String(senderID))) {
+      return; 
+    }
+  }
+
+  if (!body) return;
+
   try { await Exp.increase(senderID, Math.floor(Math.random() * 5) + 1); } catch {}
 
-  // ── 1. handleReply: الرد على رسالة سابقة للبوت ──
+  // ── 1. handleReply ──
   if (messageReply?.messageID) {
     const idx = global.client.handleReply.findIndex(r => r.messageID === messageReply.messageID);
     if (idx !== -1) {
       const replyData = global.client.handleReply[idx];
       const cmd = global.client.commands.get(replyData.name);
-      if (cmd?.handleReply) {
+
+      const runReply = cmd?.handleReply || cmd?.default?.handleReply;
+      if (runReply) {
         try {
-          await cmd.handleReply({ ...getCtx(api, event), handleReply: replyData });
+          await runReply({ ...getCtx(api, event), handleReply: replyData });
         } catch (e) {
           console.error(`[REPLY ERROR] ${replyData.name}:`, e.message);
           api.sendMessage(`❌ | خطأ في الرد:\n${e.message}`, threadID, messageID);
         }
       }
-      // تنظيف القديمة (أكثر من 5 دقائق)
       global.client.handleReply = global.client.handleReply.filter(r =>
         Date.now() - (r.createdAt || 0) < 5 * 60 * 1000
       );
@@ -277,33 +336,125 @@ async function handleMessage(api, event) {
     }
   }
 
-  // ── 2. handleEvent للأوامر (يُشغَّل لكل رسالة) ──
+  // ── 2. handleEvent للأوامر ──
   for (const [, cmd] of global.client.commands) {
-    if (cmd.handleEvent) {
-      try {
-        await cmd.handleEvent(getCtx(api, event));
-      } catch {}
+    const eventFunc = cmd.handleEvent || cmd.default?.handleEvent;
+    if (eventFunc) {
+      try { await eventFunc(getCtx(api, event)); } catch {}
     }
   }
 
-  // ── 3. الأوامر بالبريفكس ──
-  if (!body || !body.startsWith(PREFIX)) return;
+  const cleanBody = body.trim();
+  const lowerBody = cleanBody.toLowerCase();
 
-  const args = body.slice(PREFIX.length).trim().split(/\s+/);
-  const commandName = args.shift();
+  // ⚙️ [جلب ديناميكي لبادئة المجموعة الحالية]
+  const currentSystemPrefix = config.prefix || PREFIX;
+  let currentThreadPrefix = currentSystemPrefix;
+
+  try {
+    if (fs.existsSync(prefixDataPath)) {
+      const threadPrefixes = JSON.parse(fs.readFileSync(prefixDataPath, "utf8"));
+      if (threadPrefixes[threadID] !== undefined) {
+        currentThreadPrefix = threadPrefixes[threadID];
+      }
+    }
+  } catch (e) {
+    console.error("[THREAD PREFIX READ ERROR]", e.message);
+  }
+
+  // ── 3. كود فحص البادئة المباشر بدون بريفكس المطور بناءً على بادئة المجموعة الحالية ──
+  if (["بادئة", "البادئة", "prefix"].includes(lowerBody)) {
+    const prefixMsg = `🌐 System prefix: ${currentSystemPrefix}\n🛸 Your box chat prefix: ${currentThreadPrefix}`;
+    return api.sendMessage(prefixMsg, threadID, messageID);
+  }
+
+  // ── 4. تشغيل أمر "مسح" بدون بادئة ──
+  if (lowerBody === "مسح" || lowerBody === "حذف") {
+    const cmd = global.client.commands.get("مسح");
+    if (cmd) {
+      const runFunc = cmd.run || cmd.default?.run;
+      if (runFunc) {
+        try {
+          return await runFunc({ ...getCtx(api, event), args: [] });
+        } catch (e) {
+          console.error(`[NOPREFIX CMD ERROR] مسح:`, e.message);
+        }
+      }
+    }
+  }
+
+  // ── 5. معالجة الأوامر بالبريفكس المتقدمة ──
+  let hasValidPrefix = false;
+  let commandString = cleanBody;
+
+  if (currentThreadPrefix !== "" && cleanBody.startsWith(currentThreadPrefix)) {
+    hasValidPrefix = true;
+    commandString = cleanBody.slice(currentThreadPrefix.length).trim();
+  } else if (currentThreadPrefix === "") {
+    // وضع بدون بادئة مفتوح بالكامل
+    hasValidPrefix = true;
+    commandString = cleanBody;
+  }
+
+  if (!hasValidPrefix) return;
+
+  // ✨ التفاعل بريأكشن 😿 عند كتابة البريفكس المخصص فقط (إذا لم يكن فارغاً)
+  if (currentThreadPrefix !== "" && cleanBody === currentThreadPrefix) {
+    return api.setMessageReaction("😿", messageID, (err) => {
+      if (err) console.error("[REACTION ERROR]", err);
+    }, true);
+  }
+
+  // فصل اسم الأمر والمصفوفة بشكل صحيح وآمن لتفادي دمج المتغيرات
+  const args = commandString.split(/\s+/);
+  const commandName = args.shift().toLowerCase();
   if (!commandName) return;
 
   const cmd = global.client.commands.get(commandName);
-  if (!cmd) return;
+
+  // نظام التخمين ورسائل الفشل المخصصة
+  if (!cmd) {
+    // 🛡️ التعديل الجديد: إذا كانت البادئة فارغة ""، يتم الخروج فوراً وبصمت لتفادي إزعاج الشات العادي
+    if (currentThreadPrefix === "") return;
+
+    let bestMatch = "";
+    let highestScore = 0;
+    const allCommandNames = Array.from(global.client.commands.keys());
+
+    for (const name of allCommandNames) {
+      const score = stringSimilarity(commandName, name);
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatch = name;
+      }
+    }
+
+    if (highestScore >= 0.40 && bestMatch) {
+      return api.sendMessage(
+        `💫 | هـاذا الـامـر غـيـر مـوجـود\n` +
+        `💫 | جرب امر "${currentThreadPrefix}${bestMatch}"`, 
+        threadID, 
+        messageID
+      );
+    } else {
+      return api.sendMessage(`💫 | هـاذا الـامـر غـيـر مـوجـود`, threadID, messageID);
+    }
+  }
 
   // فحص الصلاحيات
-  const perm = cmd.config?.hasPermssion || 0;
+  const configData = cmd.config || cmd.default?.config;
+  const perm = configData?.hasPermssion || 0;
   if (perm >= 1 && !OWNER_IDS.includes(String(senderID))) {
     return api.sendMessage("❌ | هذا الأمر للأوانر فقط", threadID, messageID);
   }
 
+  const runFunc = cmd.run || cmd.default?.run;
+  if (!runFunc) {
+    return api.sendMessage(`❌ | خطأ: بنية أمر "${commandName}" غير صالحة للنواة.`, threadID, messageID);
+  }
+
   try {
-    await cmd.run({ ...getCtx(api, event), args });
+    await runFunc({ ...getCtx(api, event), args });
   } catch (e) {
     console.error(`[CMD ERROR] ${commandName}:`, e.message);
     api.sendMessage(`❌ | خطأ في الأمر "${commandName}":\n${e.message}`, threadID, messageID);
@@ -311,24 +462,26 @@ async function handleMessage(api, event) {
 }
 
 // ══════════════════════════════════════════
-// EVENT HANDLER (للأحداث غير الرسائل)
+// EVENT HANDLER
 // ══════════════════════════════════════════
 async function handleEvent(api, event) {
-  // أحداث التسجيل / الخروج / الدخول ← modules/events
-  for (const [, ev] of global.client.events) {
-    if (ev.handleEvent) {
-      try {
-        await ev.handleEvent(getCtx(api, event));
-      } catch {}
+  if (global.client.maintenance && global.client.maintenance.isRestricted) {
+    if (!OWNER_IDS.includes(String(event.senderID))) {
+      return; 
     }
   }
 
-  // handleEvent في الأوامر للأحداث غير الرسائل أيضاً
+  for (const [, ev] of global.client.events) {
+    const eventFunc = ev.handleEvent || ev.default?.handleEvent;
+    if (eventFunc) {
+      try { await eventFunc(getCtx(api, event)); } catch {}
+    }
+  }
+
   for (const [, cmd] of global.client.commands) {
-    if (cmd.handleEvent) {
-      try {
-        await cmd.handleEvent(getCtx(api, event));
-      } catch {}
+    const eventFunc = cmd.handleEvent || cmd.default?.handleEvent;
+    if (eventFunc) {
+      try { await eventFunc(getCtx(api, event)); } catch {}
     }
   }
 }
@@ -355,7 +508,7 @@ function startBot() {
   console.log("════════════════════════════════════");
   console.log(`  🤖 ${config.botName || "Bot"} v${config.version || "20.0.0"}`);
   console.log(`  👑 Owner: ${OWNER_IDS[0] || "N/A"}`);
-  console.log(`  🔑 البريفكس: ${PREFIX}`);
+  console.log(`  🔑 البريفكس النظام: ${PREFIX}`);
   console.log("════════════════════════════════════");
   console.log("[LOGIN] 🔄 جاري الاتصال بفيسبوك...");
 
@@ -374,7 +527,6 @@ function startBot() {
       return;
     }
 
-    // حفظ الكوكيز المحدثة
     try {
       fs.writeFileSync(appstatePath, JSON.stringify(api.getAppState(), null, 2));
     } catch {}
@@ -426,7 +578,6 @@ function startBot() {
       }
     });
 
-    // Heartbeat كل 5 دقائق
     setInterval(() => {
       const uptime = process.uptime();
       const h = Math.floor(uptime / 3600);

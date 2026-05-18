@@ -6,12 +6,12 @@ const path = require("path");
 // ══════════════════════════════════════════
 module.exports.config = {
   name: "اوامر",
-  version: "20.2.0",
+  version: "20.5.0",
   hasPermssion: 0,
   credits: "Rem Bot Developer",
-  description: "عرض قائمة أوامر ريم بوت V20 مع ميزة الصفحات",
+  description: "عرض قائمة أوامر ريم بوت V20 مع ميزة الصفحات وتفاصيل الأوامر",
   commandCategory: "نظام",
-  usages: "[رقم الصفحة / الكل]",
+  usages: "[رقم الصفحة / الكل / اسم الأمر]",
   cooldowns: 2
 };
 
@@ -20,23 +20,53 @@ module.exports.config = {
 // ══════════════════════════════════════════
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID } = event;
+  const input = (args[0] || "").trim();
 
   try {
-    // جلب جميع الأوامر من الـ Map الرئيسي للبوت
-    const allCommands = Array.from(global.client.commands.values());
-    const totalCommands = allCommands.length;
+    const allCommandNames = Array.from(global.client.commands.keys());
+    const uniqueCommandNames = [];
+
+    for (const name of allCommandNames) {
+      const cmdObj = global.client.commands.get(name);
+      const officialName = cmdObj?.config?.name || cmdObj?.default?.config?.name;
+      if (officialName && !uniqueCommandNames.includes(officialName)) {
+        uniqueCommandNames.push(officialName);
+      }
+    }
+
+    const totalCommands = uniqueCommandNames.length;
+
+    // ─── [ ميزة تفاصيل الأمر ] ───
+    if (input && isNaN(input) && input !== "الكل") {
+      const targetCmd = global.client.commands.get(input.toLowerCase());
+
+      if (!targetCmd) {
+        return api.sendMessage(`❌ | لـم يـتـم الـعـثـور عـلـى أمـر بـاسـم "${input}"`, threadID, messageID);
+      }
+
+      const cfg = targetCmd.config || targetCmd.default?.config || {};
+      const permText = cfg.hasPermssion === 1 ? "المطور فقط" : cfg.hasPermssion === 2 ? "مسؤول المجموعة" : "الجميع";
+
+      let detailTxt = `╮────────────────⟢ـ\n` +
+                      `┆˼💫˹┊ الأمر ↜｢ ${cfg.name || input} ｣\n` +
+                      `┆˼💫˹┊ الوصف ↜｢ ${cfg.description || "لا يوجد وصف"} ｣\n` +
+                      `┆˼💫˹┊ الدور ↜｢ ${permText} ｣\n` +
+                      `┆˼💫˹┊ الانتظار ↜｢ ${cfg.cooldowns || 0} ثانية ｣\n` +
+                      `┆˼💫˹┊ البديلة ↜｢ ${Array.isArray(cfg.aliases) && cfg.aliases.length > 0 ? cfg.aliases.join(", ") : "لا يوجد"} ｣\n` +
+                      `┆˼💫˹┊ المؤلف ↜｢ ${cfg.credits || "غير معروف"} ｣\n` +
+                      `╯────────────────⟢ـ`;
+
+      return api.sendMessage(detailTxt, threadID, messageID);
+    }
 
     // ترتيب الأوامر أبجدياً
-    const sortedCommands = allCommands
-      .map(c => c.config?.name)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, "ar"));
+    const sortedCommands = uniqueCommandNames.sort((a, b) => a.localeCompare(b, "ar"));
 
     const cmdsPerPage = 20;
     const totalPages = Math.ceil(sortedCommands.length / cmdsPerPage) || 1;
 
-    // التحقق مما إذا كان المستخدم يطلب القائمة الكاملة "الكل"
-    if (args[0] === "الكل") {
+    // القائمة الكاملة
+    if (input === "الكل") {
       let fullTxt = "✦〘•ま 𝑹𝑬𝑴-𝑩𝑶𝑻 ま•〙✦\n\n";
       sortedCommands.forEach((cmd, index) => {
         fullTxt += ` ✦ 𓆩 ${index + 1} 𓆪 ⟻ 『${cmd}』\n`;
@@ -47,17 +77,15 @@ module.exports.run = async function({ api, event, args }) {
       return api.sendMessage(fullTxt, threadID, messageID);
     }
 
-    // تحديد رقم الصفحة الحالية
-    let page = parseInt(args[0]) || 1;
+    // التنقل بين الصفحات
+    let page = parseInt(input) || 1;
     if (page < 1) page = 1;
     if (page > totalPages) page = totalPages;
 
-    // حساب الأوامر التي ستعرض في الصفحة الحالية
     const startIdx = (page - 1) * cmdsPerPage;
     const endIdx = startIdx + cmdsPerPage;
     const pageCommands = sortedCommands.slice(startIdx, endIdx);
 
-    // بناء رسالة الواجهة بنفس الستايل المطلوب
     let txt = "✦〘•ま 𝑹𝑬𝑴-𝑩𝑶𝑻 ま•〙✦\n\n";
 
     pageCommands.forEach((cmd, index) => {
@@ -70,14 +98,12 @@ module.exports.run = async function({ api, event, args }) {
     txt += `❄↜ الإجـمالي: ${totalCommands} أمر\n`;
     txt += "───── · · · ✦ · · · ─────\n";
     txt += "✾ اوامــر [رقـم] للتـنقل\n";
-    txt += "✾ اوامــر الكل للقـائمة الكاملة\n\n";
+    txt += "✾ اوامــر الكل للقـائمة الكاملة\n";
+    txt += "✾ اوامــر [اسم الأمر] لعرض تفاصيله\n\n";
     txt += "💡 يمكنك الرد على هذه الرسالة برقم الصفحة مباشرة للتنقل!";
 
-    // إرسال الرسالة وتسجيل الـ Reply ليتيح للمرء التنقل بالرد
     return api.sendMessage(txt, threadID, (err, info) => {
       if (err) return;
-
-      // تسجيل الـ Reply في السيرفر المركزي لبوت ريم ليعمل مع مقبض الردود
       try {
         global.client.handleReply.push({
           name: module.exports.config.name,
@@ -85,7 +111,6 @@ module.exports.run = async function({ api, event, args }) {
           totalPages: totalPages
         });
       } catch (e) {}
-
     }, messageID);
 
   } catch (e) {
@@ -95,23 +120,20 @@ module.exports.run = async function({ api, event, args }) {
 };
 
 // ══════════════════════════════════════════
-// HANDLE REPLY (التنقل الذكي عبر الرد)
+// HANDLE REPLY
 // ══════════════════════════════════════════
 module.exports.handleReply = async function({ api, event, handleReply }) {
-  const { body, threadID, messageID } = event;
+  const { body } = event;
   const { totalPages } = handleReply;
 
-  // التحقق إن كان الرد عبارة عن رقم صفحة صالح
   const page = parseInt(body.trim());
   if (isNaN(page) || page < 1 || page > totalPages) return;
 
-  // مسح الرد القديم لتجنب التكرار والازدحام
   try {
     const index = global.client.handleReply.findIndex(x => x.messageID == handleReply.messageID);
     if (index !== -1) global.client.handleReply.splice(index, 1);
   } catch {}
 
-  // تشغيل الأمر مجدداً على الصفحة الجديدة المطلوبة
   return module.exports.run({
     api,
     event,

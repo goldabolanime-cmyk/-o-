@@ -6,9 +6,9 @@ const path = require("path");
 // ══════════════════════════════════════════
 module.exports.config = {
   name: "كود",
-  version: "20.10.0",
+  version: "21.0.0",
   hasPermssion: 2, 
-  credits: "REM BOT",
+  credits: "Abdou",
   description: "نظام إدارة ملفات الأوامر: عرض، تعديل، حذف، وقائمة",
   commandCategory: "نظام المطور",
   usages: "[اسم الأمر] أو [تعديل] [الاسم] [الكود] أو [حذف] [الاسم] أو [قائمة]",
@@ -21,13 +21,13 @@ module.exports.config = {
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID, senderID, body } = event;
 
-  const botConfig = global.client.config || {};
-  const OWNER_IDS = botConfig.ownerBot || [];
-  const header = "✦〘•ま 𝑹𝑬𝑴-𝑩𝑶𝑻 ま•〙✦";
+  const botConfig = global.client?.config || global.config || {};
+  const OWNER_IDS = (botConfig.ownerBot || []).map(String);
+  const header = "✦〘•  𝑴𝑨𝑵𝑨𝑮𝑬𝑹 𝑪𝑶𝑫𝑬  •〙✦";
 
-  // التحقق من المالك الأساسي من الإعدادات
-  if (String(senderID) !== String(OWNER_IDS[0])) {
-    return api.sendMessage("👑 ┃ عذراً، هذا الأمر مخصص لمالك البوت فقط!", threadID, messageID);
+  // التحقق من صلاحية المطورين المسجلين في الإعدادات
+  if (!OWNER_IDS.includes(String(senderID))) {
+    return api.sendMessage("👑 ┃ عذراً، هذا الأمر مخصص لمالك البوت والمطورين فقط!", threadID, messageID);
   }
 
   const dirPath = path.join(__dirname);
@@ -83,8 +83,12 @@ module.exports.run = async function({ api, event, args }) {
     try {
       api.setMessageReaction("🗑️", messageID, () => {}, true);
       fs.unlinkSync(filePath);
-      global.client.commands.delete(targetName);
-      return api.sendMessage(`${header}\n\n✅ ┋ تم حذف الملف [ ${fileName} ] بنجاح.`, threadID, messageID);
+
+      // إزاحته من الذاكرة الحية للمشروع الميرائي/اللافيا
+      if (global.client && global.client.commands) {
+        global.client.commands.delete(targetName);
+      }
+      return api.sendMessage(`${header}\n\n✅ ┋ تم حذف الملف [ ${fileName} ] بنجاح من السورس.`, threadID, messageID);
     } catch (err) {
       return api.sendMessage(`❌ ┃ خطأ أثناء الحذف: ${err.message}`, threadID, messageID);
     }
@@ -96,7 +100,8 @@ module.exports.run = async function({ api, event, args }) {
     try {
       const code = fs.readFileSync(filePath, "utf-8");
       return api.sendMessage(code, threadID, (err, info) => {
-        api.sendMessage("🕒 ┋ سيتم حذف رسالة الكود بعد 120 ثانية للخصوصية.", threadID, () => {
+        if (err) return api.sendMessage("❌ ┃ فشل في إرسال محتوى الكود الكامل.", threadID, messageID);
+        api.sendMessage("🕒 ┋ سيتم حذف رسالة الكود بعد 120 ثانية للخصوصية وأمان الحساب.", threadID, () => {
           setTimeout(() => { api.unsendMessage(info.messageID); }, 120000);
         });
       }, messageID);
@@ -105,27 +110,33 @@ module.exports.run = async function({ api, event, args }) {
     }
   }
 
-  // --- [ التعديل ] ---
+  // --- [ التعديل والإصلاح الآمن ] ---
   if (isEdit) {
-    const searchString = args[1];
-    const startIndex = body.indexOf(searchString) + searchString.length;
-    const newCode = body.substring(startIndex).trim();
-
-    if (!newCode) return api.sendMessage("⚠️ ┋ يرجى كتابة الكود الجديد بعد اسم الملف.", threadID, messageID);
+    if (!args[2]) return api.sendMessage("⚠️ ┋ يرجى كتابة الكود الجديد بعد اسم الملف.", threadID, messageID);
 
     try {
+      // جلب الكود بدقة متناهية عبر تخطي "البريفكس + كود + تعديل + اسم_الملف" بناءً على موقعه الأصلي في النص
+      const searchString = args[1];
+      const index = body.indexOf(searchString) + searchString.length;
+      const newCode = body.slice(index).trim();
+
+      if (!newCode) return api.sendMessage("⚠️ ┋ لم يتم العثور على أي كود جديد لحفظه.", threadID, messageID);
+
+      // كتابة وحفظ التحديثات بالملف
       fs.writeFileSync(filePath, newCode, "utf-8");
       api.setMessageReaction("✅", messageID, () => {}, true);
 
+      // تنظيف كاش الحزمة المحملة وإعادة التعيين بالذاكرة لتجنب كراش السيرفر
       delete require.cache[require.resolve(filePath)];
       const updated = require(filePath);
-      if (updated.config && updated.config.name) {
+
+      if (updated.config && updated.config.name && global.client && global.client.commands) {
         global.client.commands.set(updated.config.name, updated);
       }
 
-      return api.sendMessage(`${header}\n\n✅ ┋ تم تحديث الملف [ ${fileName} ] بنجاح!`, threadID, messageID);
+      return api.sendMessage(`${header}\n\n✅ ┋ تم تعديل وتحديث ملف [ ${fileName} ] بنجاح وحفظه في الذاكرة الحية السورس!`, threadID, messageID);
     } catch (err) {
-      return api.sendMessage(`❌ ┃ فشل في حفظ التعديلات: ${err.message}`, threadID, messageID);
+      return api.sendMessage(`❌ ┃ فشل في حفظ التعديلات أو هناك خطأ في البنية البرمجية للكود: ${err.message}`, threadID, messageID);
     }
   }
 };
