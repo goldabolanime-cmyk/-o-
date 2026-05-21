@@ -1,3 +1,7 @@
+// ╔══════════════════════════════════════════╗
+// ║              🌌 REM RANK SYSTEM 🌌        ║
+// ╚══════════════════════════════════════════╝
+
 const { createCanvas, loadImage } = require("canvas");
 const fs = require("fs-extra");
 const path = require("path");
@@ -13,12 +17,12 @@ const {
 // ══════════════════════════════════════════
 module.exports.config = {
   name: "رانك",
-  version: "15.0.0",
+  version: "16.7.0",
   hasPermssion: 0,
   credits: "Yamada KJ / Abdou",
-  description: "نظام رانك احترافي متكامل",
+  description: "نظام رانك احترافي أسطوري مع شريط أبيض ولقب ناصع وتحديث جماعي وترقيات مضافة",
   commandCategory: "اقتصاد",
-  usages: "[ترقية/كنية/بحث/خلفية/جوائز]",
+  usages: "[ترقية/كنية/بحث/خلفية/جوائز/توب]",
   cooldowns: 5
 };
 
@@ -36,7 +40,7 @@ const BX_MILESTONES = {
 const RANK_SEARCH_PAGE_SIZE = 5;
 
 // ══════════════════════════════════════════
-// الخلفيات
+// روابط الخلفيات الافتراضية للبطاقة
 // ══════════════════════════════════════════
 const backgrounds = [
   "https://i.ibb.co/4n1MtCk2/image-0.jpg",
@@ -61,6 +65,111 @@ const USERS_DB_PATH = path.join(process.cwd(), "database", "users.json");
 const RANK_BAN_PATH = path.join(process.cwd(), "database", "rank_bans.json");
 
 // ══════════════════════════════════════════
+// ألوان الألقاب وتأثيرات التوهج
+// ══════════════════════════════════════════
+const TS = {
+  lvl50:  { color: "#e056fd", glow: "#be2edd" },
+  lvl45:  { color: "#eb4d4b", glow: "#ff7979" },
+  lvl40:  { color: "#c0392b", glow: "#ff7675" },
+  lvl35:  { color: "#e67e22", glow: "#f39c12" },
+  lvl30:  { color: "#f1c40f", glow: "#f39c12" },
+  lvl25:  { color: "#badc58", glow: "#6ab04c" },
+  lvl20:  { color: "#00d2d3", glow: "#48dbfb" },
+  lvl15:  { color: "#686de0", glow: "#4834d4" },
+  lvl10:  { color: "#95afc0", glow: "#535c68" },
+  lvl5:   { color: "#ffffff", glow: "#bdc3c7" },
+  lvl1:   { color: "#7f8c8d", glow: "#95a5a6" },
+
+  lvl55:  { color: "#fd79a8", glow: "#e84393" },
+  lvl60:  { color: "#a29bfe", glow: "#6c5ce7" },
+  lvl65:  { color: "#74b9ff", glow: "#0984e3" },
+  lvl70:  { color: "#55efc4", glow: "#00b894" },
+  lvl75:  { color: "#ffeaa7", glow: "#fdcb6e" },
+  lvl80:  { color: "#ff6b6b", glow: "#d63031" },
+  lvl85:  { color: "#a8e6cf", glow: "#27ae60" },
+  lvl90:  { color: "#dfe6e9", glow: "#636e72" },
+  lvl95:  { color: "#6c5ce7", glow: "#a29bfe" },
+  lvl100: { color: "#ffd700", glow: "#ff8c00" },
+};
+
+// ══════════════════════════════════════════
+// زخارف وتنسيقات الرسائل
+// ══════════════════════════════════════════
+const searchHelpMsg =
+"●─────── ✾ ───────●\n" +
+" ⦿ ⟬ بَحْثُ الرَّانك 🔍 ⟭ ⦿\n" +
+"┝━━━━━━━━━━━━━━━\n" +
+"┇ 💡 بالاسم: رانك بحث احمد\n" +
+"┇ 💡 بالآيدي: رانك بحث 100092990...\n" +
+"┇ 💡 بالمنشن: رانك بحث @اسم\n" +
+"┇ 💡 بالرد: رد على رسالته + رانك بحث\n" +
+"┝━━━━━━━━━━━━━━━\n" +
+"┇ رد برقم من النتائج لعرض بطاقة الرانك\n" +
+"●─────── ✾ ───────●";
+
+const styleHelpMsg =
+"●─────── ✾ ───────●\n" +
+" ⦿ ⟬ مُتَغَيِّرَاتُ الكُنْيَةِ 🏷️ ⟭ ⦿\n" +
+"┝━━━━━━━━━━━━━━━\n" +
+"┇ {اسم}     — اسم العضو\n" +
+"┇ {يوزر}    — يوزر العضو\n" +
+"┇ {اللقب}   — لقب الرانك\n" +
+"┇ {لفل}     — مستواه الحالي\n" +
+"┇ {جنس}     — جنسه\n" +
+"┇ {محفظة}   — رصيد الكاش\n" +
+"┇ {بنك}     — رصيد البنك\n" +
+"┇ {رصيد}    — إجمالي الفلوس\n" +
+"┇ {تحذير}   — عدد تحذيراته\n" +
+"┝━━━━━━━━━━━━━━━\n" +
+"┇ 💡 مثال:\n" +
+"┇ رانك كنية ستايل {اسم} 『{اللقب}』[{لفل}]\n" +
+"┇ رانك كنية ستايل {اسم} ⭐ لفل {لفل}\n" +
+"┇ رانك كنية ستايل {اللقب} | {لفل} 🔥\n" +
+"┝━━━━━━━━━━━━━━━\n" +
+"┇ 🗑️ لإزالة الستايل:\n" +
+"┇ رانك كنية ستايل مسح\n" +
+"●─────── ✾ ───────●";
+
+function nicknameModeMsg(isOn, curStyle) {
+  return (
+    "●─────── ✾ ───────●\n" +
+    " ⦿ ⟬ وضع كنية الرانك 🏷️ ⟭ ⦿\n" +
+    "┝━━━━━━━━━━━━━━━\n" +
+    `┇ الحالة: ${isOn ? "✅ مفعّل" : "❌ معطّل"}\n` +
+    `┇ 🎨 الستايل: ${curStyle || "افتراضي"}\n` +
+    "┝━━━━━━━━━━━━━━━\n" +
+    "┇ رانك كنية تشغيل ← لتفعيله\n" +
+    "┇ رانك كنية ايقاف ← لإيقافه\n" +
+    "┇ رانك كنية ستايل ← لضبط الشكل\n" +
+    "┇ رانك كنية ضبط   ← لتحديث كنيات الجميع فوراً\n" +
+    "●─────── ✾ ───────●"
+  );
+}
+
+function backgroundSetMsg(isDefault) {
+  if (isDefault) {
+    return (
+      "●─────── ✾ ───────●\n" +
+      " ⦿ ⟬ الخَلفيَّةُ الافتراضيَّة 🖼️ ⟭ ⦿\n" +
+      "┝━━━━━━━━━━━━━━━\n" +
+      "┇ ✅ تم إعادة تعيين الخلفية\n" +
+      "┇ 🎲 ستُستخدم خلفية عشوائية الآن\n" +
+      "●─────── ✾ ───────●"
+    );
+  }
+  return (
+    "●─────── ✾ ───────●\n" +
+    " ⦿ ⟬ تَمَّ تَعيينُ الخَلفيَّة 🖼️ ⟭ ⦿\n" +
+    "┝━━━━━━━━━━━━━━━\n" +
+    "┇ ✅ تم حفظ الخلفية الشخصية\n" +
+    "┇ 🎨 ستُستخدم في بطاقة رانكك\n" +
+    "┝━━━━━━━━━━━━━━━\n" +
+    "┇ 💡 رانك خلفية افتراضي — للإلغاء\n" +
+    "●─────── ✾ ───────●"
+  );
+}
+
+// ══════════════════════════════════════════
 // الخلفية الشخصية
 // ══════════════════════════════════════════
 function getUserBg(uid) {
@@ -76,7 +185,6 @@ function getUserBg(uid) {
 function setUserBg(uid, url) {
   try {
     let data = {};
-
     try {
       data = JSON.parse(fs.readFileSync(USERS_DB_PATH, "utf8") || "{}");
     } catch {}
@@ -89,12 +197,7 @@ function setUserBg(uid, url) {
       data[String(uid)].rankBackground = url;
 
     fs.ensureDirSync(path.dirname(USERS_DB_PATH));
-
-    fs.writeFileSync(
-      USERS_DB_PATH,
-      JSON.stringify(data, null, 2)
-    );
-
+    fs.writeFileSync(USERS_DB_PATH, JSON.stringify(data, null, 2));
   } catch (e) {
     console.log("[RANK BG ERROR]", e.message);
   }
@@ -113,31 +216,6 @@ function isRankBanned(uid) {
   }
 }
 
-function setRankBan(uid, banned) {
-  try {
-    let data = {};
-
-    try {
-      data = JSON.parse(fs.readFileSync(RANK_BAN_PATH, "utf8") || "{}");
-    } catch {}
-
-    if (banned)
-      data[String(uid)] = true;
-    else
-      delete data[String(uid)];
-
-    fs.ensureDirSync(path.dirname(RANK_BAN_PATH));
-
-    fs.writeFileSync(
-      RANK_BAN_PATH,
-      JSON.stringify(data, null, 2)
-    );
-
-  } catch (e) {
-    console.log("[RANK BAN ERROR]", e.message);
-  }
-}
-
 // ══════════════════════════════════════════
 // تكلفة الترقية
 // ══════════════════════════════════════════
@@ -152,66 +230,14 @@ function getUpgradeCost(currentLevel) {
 }
 
 // ══════════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════════
-function registerReply(messageID, data) {
-  try {
-    global.client.handleReply.push({
-      name: module.exports.config.name,
-      messageID,
-      ...data
-    });
-  } catch {}
-}
-
-function deleteReply(messageID) {
-  try {
-    const index = global.client.handleReply.findIndex(
-      x => x.messageID == messageID
-    );
-
-    if (index !== -1)
-      global.client.handleReply.splice(index, 1);
-
-  } catch {}
-}
-
-// ══════════════════════════════════════════
-// COOLDOWN
-// ══════════════════════════════════════════
-const _nickCooldown = new Map();
-
-function _setCooldown(pid, threadID) {
-  _nickCooldown.set(
-    `${String(pid)}:${String(threadID)}`,
-    Date.now()
-  );
-}
-
-function _hasCooldown(pid, threadID, ms = 10000) {
-  const key = `${String(pid)}:${String(threadID)}`;
-
-  const ts = _nickCooldown.get(key);
-
-  if (!ts) return false;
-
-  if (Date.now() - ts < ms)
-    return true;
-
-  _nickCooldown.delete(key);
-
-  return false;
-}
-
-// ══════════════════════════════════════════
-// لقب الرانك
+// كنية الرانك الافتراضية
 // ══════════════════════════════════════════
 function buildRankNickname(title, level) {
   return `☬〘${title}〙⌘『${level}』☬`;
 }
 
 // ══════════════════════════════════════════
-// ستايل الكنية
+// الكنية المخصصة
 // ══════════════════════════════════════════
 function buildCustomNickname(template, vars) {
   return template
@@ -227,91 +253,59 @@ function buildCustomNickname(template, vars) {
 }
 
 // ══════════════════════════════════════════
-// ألوان الرتب
-// ══════════════════════════════════════════
-const TS = {
-  lvl100: { color: "#ffd700", glow: "#ff8c00" },
-  lvl95:  { color: "#6c5ce7", glow: "#a29bfe" },
-  lvl90:  { color: "#dfe6e9", glow: "#636e72" },
-  lvl85:  { color: "#a8e6cf", glow: "#27ae60" },
-  lvl80:  { color: "#ff6b6b", glow: "#d63031" },
-  lvl75:  { color: "#ffeaa7", glow: "#fdcb6e" },
-  lvl70:  { color: "#55efc4", glow: "#00b894" },
-  lvl65:  { color: "#74b9ff", glow: "#0984e3" },
-  lvl60:  { color: "#a29bfe", glow: "#6c5ce7" },
-  lvl55:  { color: "#fd79a8", glow: "#e84393" },
-  lvl50:  { color: "#e056fd", glow: "#be2edd" },
-  lvl45:  { color: "#eb4d4b", glow: "#ff7979" },
-  lvl40:  { color: "#c0392b", glow: "#ff7675" },
-  lvl35:  { color: "#e67e22", glow: "#f39c12" },
-  lvl30:  { color: "#f1c40f", glow: "#f39c12" },
-  lvl25:  { color: "#badc58", glow: "#6ab04c" },
-  lvl20:  { color: "#00d2d3", glow: "#48dbfb" },
-  lvl15:  { color: "#686de0", glow: "#4834d4" },
-  lvl10:  { color: "#95afc0", glow: "#535c68" },
-  lvl5:   { color: "#ffffff", glow: "#bdc3c7" },
-  lvl1:   { color: "#7f8c8d", glow: "#95a5a6" },
-};
-
-// ══════════════════════════════════════════
-// الرتب
+// الألقاب المزخرفة
 // ══════════════════════════════════════════
 function getRankTitle(level, gender) {
-
-  const female =
+  const f =
     gender === 1 ||
     gender === "FEMALE" ||
+    gender === "أنثى" ||
     gender === "Female" ||
-    gender === "أنثى";
+    gender === "Nữ";
 
-  if (female) {
-
-    if (level >= 100)
-      return { title: "✦ نَاجِيَةٌ فَوقَ الخَيَال ✦", key: "lvl100", ...TS.lvl100 };
-
-    if (level >= 90)
-      return { title: "⚡ إِلَهَةُ الظَّلَام ⚡", key: "lvl90", ...TS.lvl90 };
-
-    if (level >= 75)
-      return { title: "👑 مَلِكَةُ الآلِهَة 👑", key: "lvl75", ...TS.lvl75 };
-
-    if (level >= 50)
-      return { title: "آلَنِآجّيَةّ آلَوٌحًيَدٍةّ", key: "lvl50", ...TS.lvl50 };
-
-    if (level >= 30)
-      return { title: "♕ الإمبراطورة ♕", key: "lvl30", ...TS.lvl30 };
-
-    if (level >= 15)
-      return { title: "★ الفارسة المقدسة ★", key: "lvl15", ...TS.lvl15 };
-
-    if (level >= 5)
-      return { title: "✦ المتدربة ✦", key: "lvl5", ...TS.lvl5 };
-
+  if (f) {
+    if (level >= 100) return { title: "✦ نَاجِيَةٌ فَوقَ الخَيَال ✦", key: "lvl100", ...TS.lvl100 };
+    if (level >= 95)  return { title: "♾️ سَيِّدَةُ الأَبَدِيَّة ♾️", key: "lvl95", ...TS.lvl95 };
+    if (level >= 90)  return { title: "⚡ إِلَهَةُ الظَّلَام ⚡", key: "lvl90", ...TS.lvl90 };
+    if (level >= 85)  return { title: "🌌 حَاكِمَةُ الكَوْن 🌌", key: "lvl85", ...TS.lvl85 };
+    if (level >= 80)  return { title: "🩸 أُسطُورَةُ الدَّم 🩸", key: "lvl80", ...TS.lvl80 };
+    if (level >= 75)  return { title: "👑 مَلِكَةُ الآلِهَة 👑", key: "lvl75", ...TS.lvl75 };
+    if (level >= 70)  return { title: "💀 سَيِّدَةُ الفَنَاء 💀", key: "lvl70", ...TS.lvl70 };
+    if (level >= 65)  return { title: "🌑 أَمِيرَةُ الظَّلَام 🌑", key: "lvl65", ...TS.lvl65 };
+    if (level >= 60)  return { title: "🌙 حَارِسَةُ اللَّيل 🌙", key: "lvl60", ...TS.lvl60 };
+    if (level >= 55)  return { title: "⚡ سَاحِرَةُ البَرق ⚡", key: "lvl55", ...TS.lvl55 };
+    if (level >= 50)  return { title: "آلَنِآجّيَةّ آلَوٌحًيَدٍةّ", key: "lvl50", ...TS.lvl50 };
+    if (level >= 45)  return { title: "♧ سيدة الأرواح ♧", key: "lvl45", ...TS.lvl45 };
+    if (level >= 40)  return { title: "✧ ملكة الدماء ✧", key: "lvl40", ...TS.lvl40 };
+    if (level >= 35)  return { title: "✧ ساحرة الظلام ✧", key: "lvl35", ...TS.lvl35 };
+    if (level >= 30)  return { title: "♕ الإمبراطورة ♕", key: "lvl30", ...TS.lvl30 };
+    if (level >= 25)  return { title: "★ قائدة الفيلق ★", key: "lvl25", ...TS.lvl25 };
+    if (level >= 20)  return { title: "★ قائدة الفرسان ★", key: "lvl20", ...TS.lvl20 };
+    if (level >= 15)  return { title: "★ الفارسة المقدسة ★", key: "lvl15", ...TS.lvl15 };
+    if (level >= 10)  return { title: "★ الفارسة ★", key: "lvl10", ...TS.lvl10 };
+    if (level >= 5)   return { title: "✦ المتدربة ✦", key: "lvl5", ...TS.lvl5 };
     return { title: "✦ المستجدة الصاعدة ✦", key: "lvl1", ...TS.lvl1 };
-
   } else {
-
-    if (level >= 100)
-      return { title: "✦ نَاجٍ فَوقَ الخَيَال ✦", key: "lvl100", ...TS.lvl100 };
-
-    if (level >= 90)
-      return { title: "⚡ إِلَهُ الظَّلَام ⚡", key: "lvl90", ...TS.lvl90 };
-
-    if (level >= 75)
-      return { title: "👑 مَلِكُ الآلِهَة 👑", key: "lvl75", ...TS.lvl75 };
-
-    if (level >= 50)
-      return { title: "آلَنِآجّيَ آلَوٌحًيَدٍ", key: "lvl50", ...TS.lvl50 };
-
-    if (level >= 30)
-      return { title: "♕ الإمبراطور ♕", key: "lvl30", ...TS.lvl30 };
-
-    if (level >= 15)
-      return { title: "★ الفارس المقدس ★", key: "lvl15", ...TS.lvl15 };
-
-    if (level >= 5)
-      return { title: "✦ المتدرب ✦", key: "lvl5", ...TS.lvl5 };
-
+    if (level >= 100) return { title: "✦ نَاجٍ فَوقَ الخَيَال ✦", key: "lvl100", ...TS.lvl100 };
+    if (level >= 95)  return { title: "♾️ سَيِّدُ الأَبَدِيَّة ♾️", key: "lvl95", ...TS.lvl95 };
+    if (level >= 90)  return { title: "⚡ إِلَهُ الظَّلَام ⚡", key: "lvl90", ...TS.lvl90 };
+    if (level >= 85)  return { title: "🌌 حَاكِمُ الكَوْن 🌌", key: "lvl85", ...TS.lvl85 };
+    if (level >= 80)  return { title: "🩸 أُسطُورَةُ الدَّم 🩸", key: "lvl80", ...TS.lvl80 };
+    if (level >= 75)  return { title: "👑 مَلِكُ الآلِهَة 👑", key: "lvl75", ...TS.lvl75 };
+    if (level >= 70)  return { title: "💀 سَيِّدُ الفَنَاء 💀", key: "lvl70", ...TS.lvl70 };
+    if (level >= 65)  return { title: "🌑 أَمِيرُ الظَّلَام 🌑", key: "lvl65", ...TS.lvl65 };
+    if (level >= 60)  return { title: "🌙 حَارِسُ اللَّيل 🌙", key: "lvl60", ...TS.lvl60 };
+    if (level >= 55)  return { title: "⚡ سَاحِرُ البَرق ⚡", key: "lvl55", ...TS.lvl55 };
+    if (level >= 50)  return { title: "آلَنِآجّيَ آلَوٌحًيَدٍ", key: "lvl50", ...TS.lvl50 };
+    if (level >= 45)  return { title: "♧ سيد الأرواح ♧", key: "lvl45", ...TS.lvl45 };
+    if (level >= 40)  return { title: "✧ ملك الدماء ✧", key: "lvl40", ...TS.lvl40 };
+    if (level >= 35)  return { title: "✧ ساحر الظلام ✧", key: "lvl35", ...TS.lvl35 };
+    if (level >= 30)  return { title: "♕ الإمبراطور ♕", key: "lvl30", ...TS.lvl30 };
+    if (level >= 25)  return { title: "★ قائد الفيلق ★", key: "lvl25", ...TS.lvl25 };
+    if (level >= 20)  return { title: "★ قائد الفرسان ★", key: "lvl20", ...TS.lvl20 };
+    if (level >= 15)  return { title: "★ الفارس المقدس ★", key: "lvl15", ...TS.lvl15 };
+    if (level >= 10)  return { title: "★ الفارس ★", key: "lvl10", ...TS.lvl10 };
+    if (level >= 5)   return { title: "✦ المتدرب ✦", key: "lvl5", ...TS.lvl5 };
     return { title: "✦ مستجد الصاعد ✦", key: "lvl1", ...TS.lvl1 };
   }
 }
@@ -321,7 +315,6 @@ function getRankTitle(level, gender) {
 // ══════════════════════════════════════════
 async function loadImg(url) {
   try {
-
     const res = await axios.get(url, {
       responseType: "arraybuffer",
       timeout: 10000,
@@ -332,23 +325,19 @@ async function loadImg(url) {
       return null;
 
     const tmp = path.join(process.cwd(), "cache", `tmp_${Date.now()}.png`);
-
     fs.ensureDirSync(path.dirname(tmp));
     fs.writeFileSync(tmp, Buffer.from(res.data));
 
     const img = await loadImage(tmp);
-
     fs.remove(tmp).catch(() => {});
-
     return img;
-
   } catch {
     return null;
   }
 }
 
 // ══════════════════════════════════════════
-// رسم الدائرة
+// أدوات الرسم
 // ══════════════════════════════════════════
 function circle(ctx, x, y, r) {
   ctx.beginPath();
@@ -356,9 +345,6 @@ function circle(ctx, x, y, r) {
   ctx.closePath();
 }
 
-// ══════════════════════════════════════════
-// مستطيل دائري
-// ══════════════════════════════════════════
 function rrect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -374,7 +360,7 @@ function rrect(ctx, x, y, w, h, r) {
 }
 
 // ══════════════════════════════════════════
-// بناء الكارت
+// بناء بطاقة الرانك
 // ══════════════════════════════════════════
 async function buildRankCard({
   targetID,
@@ -387,17 +373,13 @@ async function buildRankCard({
   rankInfo,
   customBg
 }) {
-
   const W = 900;
   const H = 500;
 
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext("2d");
 
-  const bgUrl =
-    customBg ||
-    backgrounds[Math.floor(Math.random() * backgrounds.length)];
-
+  const bgUrl = customBg || backgrounds[Math.floor(Math.random() * backgrounds.length)];
   const bg = await loadImg(bgUrl);
 
   if (bg) {
@@ -413,17 +395,16 @@ async function buildRankCard({
 
   const overlay = ctx.createLinearGradient(0, 0, 0, H);
   overlay.addColorStop(0, "rgba(0,0,0,0.4)");
-  overlay.addColorStop(1, "rgba(0,0,0,0.95)");
+  overlay.addColorStop(1, "rgba(0,0,0,0.92)");
   ctx.fillStyle = overlay;
   ctx.fillRect(0, 0, W, H);
 
+  // إحداثيات صورة البروفايل (أفاتار) في مكانها الدقيق والمحدد
   const ax = 150;
   const ay = 230;
   const r = 100;
 
-  const avatar = await loadImg(
-    `https://graph.facebook.com/${targetID}/picture?height=512&width=512`
-  );
+  const avatar = await loadImg(`https://graph.facebook.com/${targetID}/picture?height=512&width=512`);
 
   if (avatar) {
     ctx.save();
@@ -431,340 +412,337 @@ async function buildRankCard({
     ctx.clip();
     ctx.drawImage(avatar, ax - r, ay - r, r * 2, r * 2);
     ctx.restore();
-  } else {
-    ctx.fillStyle = "#2c3e50";
-    circle(ctx, ax, ay, r);
-    ctx.fill();
   }
 
+  // التوهج والإطار حول الأفاتار باللون الخاص باللفل لجمالية التصميم
   ctx.strokeStyle = rankInfo.color;
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 7;
   ctx.shadowColor = rankInfo.glow;
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 30;
+
   circle(ctx, ax, ay, r);
   ctx.stroke();
-  ctx.shadowBlur = 0;
+  ctx.shadowBlur = 0; // تصفير التوهج حتى لا يؤثر على النصوص
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 45px Arial";
-  ctx.fillText(name, 300, 120);
+  // رسم اسم المستخدم
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 44px Arial";
+  ctx.fillText(name, 300, 110);
 
-  ctx.fillStyle = rankInfo.color;
-  ctx.font = "bold 28px Arial";
-  ctx.fillText(rankInfo.title, 300, 170);
-
-  ctx.fillStyle = "#fff";
+  // [تعديل]: جعل اللقب باللون الأبيض الناصع بناءً على طلبك
+  ctx.fillStyle = "#ffffff";
   ctx.font = "bold 30px Arial";
-  ctx.fillText(`LVL ${level}`, 300, 240);
+  ctx.fillText(rankInfo.title, 300, 165);
 
+  // رسم اللفل الحالي
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 34px Arial";
+  ctx.fillText(`LEVEL ${level}`, 300, 235);
+
+  // خلفية شريط الخبرة (شفافة وخلفية)
   ctx.fillStyle = "rgba(255,255,255,0.15)";
-  rrect(ctx, 300, 270, 450, 35, 15);
+  rrect(ctx, 300, 270, 470, 38, 18);
   ctx.fill();
 
+  // [تعديل]: شريط الخبرة باللون الأبيض الناصع المتوهج
   const progress = Math.min(exp / levelUpExp, 1);
-  const bar = ctx.createLinearGradient(300, 0, 750, 0);
-  bar.addColorStop(0, rankInfo.color);
-  bar.addColorStop(1, rankInfo.glow);
-  ctx.fillStyle = bar;
-  rrect(ctx, 300, 270, 450 * progress, 35, 15);
+  ctx.fillStyle = "#ffffff"; 
+  ctx.save();
+  ctx.shadowColor = rankInfo.glow; // الحفاظ على توهج اللفل مع اللون الأبيض للشريط
+  ctx.shadowBlur = 15;
+  rrect(ctx, 300, 270, 470 * progress, 38, 18);
   ctx.fill();
+  ctx.restore();
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "18px Arial";
+  // نص نقاط الخبرة XP
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "20px Arial";
   ctx.fillText(`${exp} / ${levelUpExp} XP`, 300, 330);
 
-  ctx.fillStyle = "#ffb800";
+  // رسم رصيد المال الإجمالي
+  ctx.fillStyle = "#ffcc00";
   ctx.font = "bold 32px Arial";
   ctx.fillText(`$ ${money.toLocaleString()}`, 300, 400);
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 22px Arial";
-  ctx.fillText(`Rank ${rankText}`, 700, 70);
+  // رسم الترتيب الحالي في المجموعة
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText(`RANK ${rankText}`, 700, 70);
 
   return canvas.toBuffer("image/png");
 }
 
 // ══════════════════════════════════════════
-// تطبيق الكنية
-// ══════════════════════════════════════════
-async function applyRankNickname({
-  api,
-  threadID,
-  targetID,
-  Users,
-  Exp,
-  Threads,
-  Economy
-}) {
-
-  try {
-
-    const data = await Threads.getData(threadID);
-
-    if (!data?.rankNicknameMode)
-      return false;
-
-    const xpData = await Exp.check(targetID);
-
-    const level = xpData?.data?.currentLevel || 1;
-
-    let userInfo = {};
-
-    try {
-      const r = await Users.find(targetID);
-      if (r?.data?.data) userInfo = r.data.data;
-    } catch {}
-
-    const rankInfo = getRankTitle(level, userInfo.gender);
-
-    let nickname;
-
-    if (data?.rankNicknameStyle) {
-
-      let money = 0;
-      let bank = 0;
-
-      try {
-        const cr = await Economy.getBalance(targetID, "money");
-        const br = await Economy.getBalance(targetID, "bank");
-        money = typeof cr === "number" ? cr : cr?.data || 0;
-        bank = typeof br === "number" ? br : br?.data || 0;
-      } catch {}
-
-      nickname = buildCustomNickname(data.rankNicknameStyle, {
-        name: userInfo.name || "",
-        vanity: userInfo.vanity || "",
-        title: rankInfo.title,
-        level,
-        gender: userInfo.gender || "",
-        money,
-        bank,
-        warns: 0
-      });
-
-    } else {
-      nickname = buildRankNickname(rankInfo.title, level);
-    }
-
-    _setCooldown(targetID, threadID);
-
-    await api.changeNickname(nickname, threadID, targetID);
-
-    return true;
-
-  } catch {
-    return false;
-  }
-}
-
-// ══════════════════════════════════════════
 // RUN
 // ══════════════════════════════════════════
-module.exports.run = async function({
-  api,
-  event,
-  args,
-  Users,
-  Economy,
-  Exp,
-  Threads
-}) {
-
-  const {
-    threadID,
-    messageID,
-    senderID,
-    mentions,
-    body
-  } = event;
+module.exports.run = async function({ api, event, args, Users, Economy, Exp, Threads }) {
+  const { threadID, messageID, senderID, mentions } = event;
+  const body = event.body || "";
 
   try {
-
     const sub = args[0]?.toLowerCase();
+
+    // ══════════════════════════════════════
+    // ترقية (الميزة الجديدة والمطلوبة)
+    // ══════════════════════════════════════
+    if (sub === "ترقية") {
+      const xpData = await Exp.check(senderID);
+      const currentLevel = xpData?.data?.currentLevel || 1;
+      const costPerLevel = 20000;
+
+      // الحالة 1: رانك ترقية [عدد] - تنفيذ شراء المستويات
+      if (args[1] && !isNaN(args[1])) {
+        const levelsToBuy = parseInt(args[1]);
+        if (levelsToBuy <= 0) {
+          return api.sendMessage("⚠️ | يرجى تحديد عدد مستويات صحيح أكبر من صفر للترقية!", threadID, messageID);
+        }
+
+        const totalCost = levelsToBuy * costPerLevel;
+        const bankBalanceR = await Economy.getBalance(senderID, "bank");
+        const bankBalance = (typeof bankBalanceR === "number" ? bankBalanceR : bankBalanceR?.data || 0);
+
+        if (bankBalance < totalCost) {
+          return api.sendMessage(`❌ | رصيدك في البنك غير كافٍ!\n💰 تكلفة ترقية [ ${levelsToBuy} ] مستويات هي: ${totalCost.toLocaleString()} $\n🏦 رصيدك الحالي في البنك: ${bankBalance.toLocaleString()} $`, threadID, messageID);
+        }
+
+        // الخصم من البنك وإضافة المستويات
+        await Economy.decrease(totalCost, senderID, "bank");
+
+        // تعديل البيانات محلياً في ملف الخبرة الخاص بالسورس عبر النواة
+        const nextLevel = currentLevel + levelsToBuy;
+
+        // جلب ملف النواة وتحديث الحقلين المستهدفين للخبرة واللفل
+        if (global.data && typeof global.data.exp === "object") {
+          if (!global.data.exp[senderID]) global.data.exp[senderID] = { exp: 0, currentLevel: 1 };
+          global.data.exp[senderID].currentLevel = nextLevel;
+          global.data.exp[senderID].exp = 0; // تصفير الخبرة الحالية عند الترقية المدفوعة
+        }
+
+        // حفظ ملف الـ exp.json في قاعدة البيانات إن أمكن، أو الاعتماد على الحفظ التلقائي للـ controller
+        try {
+          const EXP_FILE = path.join(process.cwd(), "database", "exp.json");
+          if (fs.existsSync(EXP_FILE)) {
+            let fileData = fs.readJsonSync(EXP_FILE);
+            if (!fileData[senderID]) fileData[senderID] = {};
+            fileData[senderID].currentLevel = nextLevel;
+            fileData[senderID].exp = 0;
+            fs.writeJsonSync(EXP_FILE, fileData, { spaces: 2 });
+          }
+        } catch(e) { console.log(e); }
+
+        let ui = {};
+        try {
+          const r = await Users.find(senderID);
+          if (r?.data?.data) ui = r.data.data;
+        } catch {}
+        const rankInfo = getRankTitle(nextLevel, ui.gender);
+
+        return api.sendMessage(`●─────── ✾ ───────●\n ⦿ ⟬ نَجَاحُ التَّرْقِيَةِ ⚡ ⟭ ⦿\n┝━━━━━━━━━━━━━━━\n┇ 🎉 مبروك! تم ترقيتك بنجاح\n┇ 🔼 المستويات المضافة: +${levelsToBuy}\n┇ 🌟 المستوى الجديد: [ ${nextLevel} ]\n┇ 🏷️ اللقب الحالي: ${rankInfo.title}\n┇ 💸 تم خصم: ${totalCost.toLocaleString()} $ من البنك\n●─────── ✾ ───────●`, threadID, messageID);
+      }
+
+      // الحالة 2: رانك ترقية (عرض قائمة المستويات الـ 7 القادمة)
+      let upgradeMsg = "●─────── ✾ ───────●\n ⦿ ⟬ قَائِمَةُ التَّرْقِيَاتِ 🔼 ⟭ ⦿\n┝━━━━━━━━━━━━━━━\n";
+      let ui = {};
+      try {
+        const r = await Users.find(senderID);
+        if (r?.data?.data) ui = r.data.data;
+      } catch {}
+
+      for (let i = 1; i <= 7; i++) {
+        const targetLvl = currentLevel + i;
+        const cost = i * costPerLevel;
+        const titleInfo = getRankTitle(targetLvl, ui.gender);
+        upgradeMsg += `┇ 🌟 لفل [ ${targetLvl} ] ↜ +${i} مستوى\n┇ 🏷️ اللقب: ${titleInfo.title}\n┇ 💰 التكلفة: ${cost.toLocaleString()} $\n⊱ ────────────── ⊰\n`;
+      }
+      upgradeMsg += `💡 للترقية، اكتب:\nرانك ترقية [عدد المستويات]\nمثال: رانك ترقية 3\n●─────── ✾ ───────●`;
+      return api.sendMessage(upgradeMsg, threadID, messageID);
+    }
 
     // ══════════════════════════════════════
     // خلفية
     // ══════════════════════════════════════
     if (sub === "خلفية") {
-
       const isDefault = body.includes("افتراضي");
 
       if (isDefault) {
         setUserBg(senderID, null);
-        return api.sendMessage("✅ | تم حذف الخلفية الشخصية", threadID, messageID);
+        return api.sendMessage(backgroundSetMsg(true), threadID, messageID);
       }
 
       const att = event.messageReply?.attachments?.[0];
       const imgUrl = att?.url || att?.previewUrl || att?.thumbnailUrl;
 
       if (!imgUrl) {
-        return api.sendMessage(
-          "⚠️ | رد على صورة ثم اكتب:\nرانك خلفية",
-          threadID,
-          messageID
-        );
+        return api.sendMessage("⚠️ | رد على صورة ثم اكتب:\nرانك خلفية", threadID, messageID);
       }
 
       setUserBg(senderID, imgUrl);
-
-      return api.sendMessage("✅ | تم تعيين الخلفية الشخصية", threadID, messageID);
+      return api.sendMessage(backgroundSetMsg(false), threadID, messageID);
     }
 
     // ══════════════════════════════════════
     // جوائز
     // ══════════════════════════════════════
     if (sub === "جوائز") {
-
-      let txt =
-        "●─────── ✾ ───────●\n" +
-        " ⦿ ⟬ جَوَائِزُ الرَّانك ✿ ⟭ ⦿\n" +
-        "┝━━━━━━━━━━━━━━━\n";
-
+      let txt = "●─────── ✾ ───────●\n ⦿ ⟬ جَوَائِزُ الرَّانك ✿ ⟭ ⦿\n┝━━━━━━━━━━━━━━━\n";
       for (const [lvl, bx] of Object.entries(BX_MILESTONES)) {
         txt += `┇ 🏆 لفل ${lvl} ↜ ${bx} Bx\n`;
       }
-
       txt += "●─────── ✾ ───────●";
-
       return api.sendMessage(txt, threadID, messageID);
-    }
-
-    // ══════════════════════════════════════
-    // ترقية
-    // ══════════════════════════════════════
-    if (["ترقية", "ترقيه", "upgrade"].includes(sub)) {
-
-      const xp = await Exp.check(senderID);
-      const level = xp?.data?.currentLevel || 1;
-      const cost = getUpgradeCost(level);
-
-      const cashR = await Economy.getBalance(senderID, "money");
-      const bankR = await Economy.getBalance(senderID, "bank");
-
-      const cash = typeof cashR === "number" ? cashR : cashR?.data || 0;
-      const bank = typeof bankR === "number" ? bankR : bankR?.data || 0;
-
-      const total = cash + bank;
-
-      if (total < cost) {
-        return api.sendMessage(
-          `❌ | تحتاج ${(cost - total).toLocaleString()}$ إضافية`,
-          threadID,
-          messageID
-        );
-      }
-
-      let remain = cost;
-
-      if (cash >= remain) {
-        await Economy.decrease(remain, senderID, "money");
-      } else {
-        await Economy.decrease(cash, senderID, "money");
-        remain -= cash;
-        await Economy.decrease(remain, senderID, "bank");
-      }
-
-      const lvExp = xp?.data?.levelUpExp || 500;
-      const curExp = xp?.data?.exp || 0;
-
-      await Exp.increase(senderID, lvExp - curExp);
-
-      const newLevel = level + 1;
-
-      let rewardText = "";
-
-      const bxReward = BX_MILESTONES[newLevel] || 0;
-
-      if (bxReward > 0) {
-        addUserBeatrix(String(senderID), bxReward);
-        rewardText = `\n🎁 حصلت على ${bxReward} Bx`;
-      }
-
-      await applyRankNickname({
-        api,
-        threadID,
-        targetID: senderID,
-        Users,
-        Exp,
-        Threads,
-        Economy
-      });
-
-      return api.sendMessage(
-        `✅ | تمت الترقية إلى لفل ${newLevel}${rewardText}`,
-        threadID,
-        messageID
-      );
     }
 
     // ══════════════════════════════════════
     // كنية
     // ══════════════════════════════════════
     if (sub === "كنية") {
-
       const action = args[1]?.toLowerCase();
-      const threadData = await Threads.getData(threadID);
+      const threadData = await Threads.getData(threadID) || {};
 
-      if (action === "تشغيل" || action === "on") {
-
+      if (action === "تشغيل") {
         await Threads.update(threadID, { rankNicknameMode: true });
-
-        return api.sendMessage("✅ | تم تفعيل كنية الرانك", threadID, messageID);
+        return api.sendMessage("✅ | تم تفعيل كنية الرانك تلقائياً", threadID, messageID);
       }
 
-      if (action === "ايقاف" || action === "off") {
-
+      if (action === "ايقاف") {
         await Threads.update(threadID, { rankNicknameMode: false });
-
-        return api.sendMessage("🔴 | تم إيقاف كنية الرانك", threadID, messageID);
+        return api.sendMessage("🔴 | تم تعطيل كنية الرانك تلقائياً", threadID, messageID);
       }
 
       if (action === "ستايل") {
-
         const style = args.slice(2).join(" ");
-
         if (!style) {
-          return api.sendMessage("⚠️ | اكتب ستايل صالح", threadID, messageID);
+          return api.sendMessage(styleHelpMsg, threadID, messageID);
         }
-
-        if (style === "مسح" || style === "حذف") {
-
+        if (style === "مسح") {
           await Threads.update(threadID, { rankNicknameStyle: null });
-
-          return api.sendMessage("🗑️ | تم حذف الستايل", threadID, messageID);
+          return api.sendMessage("🗑️ | تم حذف الستايل المخصص والرجوع للافتراضي", threadID, messageID);
         }
 
         await Threads.update(threadID, { rankNicknameStyle: style });
+        return api.sendMessage(`✅ | تم حفظ الستايل بنجاح:\n\n${style}`, threadID, messageID);
+      }
 
-        return api.sendMessage(
-          `✅ | تم حفظ الستايل\n\n${style}`,
-          threadID,
-          messageID
-        );
+      if (action === "ضبط") {
+        const info = await api.getThreadInfo(threadID);
+        const members = info.participantIDs;
+
+        api.sendMessage(`⏳ | جاري بدء تحديث كنيات لـ (${members.length}) عضو بناءً على الرانك...\n⏱️ الوقت المتوقع: ${members.length * 5} ثانية.`, threadID);
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < members.length; i++) {
+          const uid = members[i];
+
+          setTimeout(async () => {
+            try {
+              const xp = await Exp.check(uid);
+              const level = xp?.data?.currentLevel || 1;
+
+              let ui = {};
+              try {
+                const r = await Users.find(uid);
+                if (r?.data?.data) ui = r.data.data;
+              } catch {}
+
+              const name = ui.name || (await Users.getNameUser(uid));
+              const rankInfo = getRankTitle(level, ui.gender);
+
+              let nextNickname = "";
+              if (threadData.rankNicknameStyle) {
+                const cashR = await Economy.getBalance(uid, "money");
+                const bankR = await Economy.getBalance(uid, "bank");
+                const mData = (typeof cashR === "number" ? cashR : cashR?.data || 0);
+                const bData = (typeof bankR === "number" ? bankR : bankR?.data || 0);
+
+                nextNickname = buildCustomNickname(threadData.rankNicknameStyle, {
+                  name,
+                  level,
+                  title: rankInfo.title,
+                  gender: (ui.gender === 1 ? "أنثى" : "ذكر"),
+                  money: mData,
+                  bank: bData,
+                  vanity: uid,
+                  warns: ui.warns || 0
+                });
+              } else {
+                nextNickname = buildRankNickname(rankInfo.title, level);
+              }
+
+              await api.changeNickname(nextNickname, threadID, uid);
+              successCount++;
+            } catch (err) {
+              failCount++;
+            }
+
+            if (i === members.length - 1) {
+              api.sendMessage(`●─────── ✾ ───────●\n ⦿ ⟬ تَقْرِيرُ الضَّبْطِ 🏷️ ⟭ ⦿\n┝━━━━━━━━━━━━━━━\n┇ ✅ تم تحديث: ${successCount}\n┇ ❌ فشل تحديث: ${failCount}\n●─────── ✾ ───────●`, threadID);
+            }
+          }, i * 5000);
+        }
+        return;
       }
 
       return api.sendMessage(
-        `الحالة: ${threadData?.rankNicknameMode ? "مفعلة ✅" : "معطلة ❌"}`,
+        nicknameModeMsg(threadData?.rankNicknameMode, threadData?.rankNicknameStyle),
         threadID,
         messageID
       );
     }
 
     // ══════════════════════════════════════
-    // بطاقة الرانك
+    // بحث
+    // ══════════════════════════════════════
+    if (sub === "بحث") {
+      return api.sendMessage(searchHelpMsg, threadID, messageID);
+    }
+
+    // ══════════════════════════════════════
+    // توب
+    // ══════════════════════════════════════
+    if (sub === "توب") {
+      const info = await api.getThreadInfo(threadID);
+      const members = info.participantIDs;
+      let leaderboard = [];
+
+      for (const uid of members) {
+        try {
+          const xp = await Exp.check(uid);
+          if (xp && xp.data) {
+            leaderboard.push({
+              uid,
+              level: xp.data.currentLevel || 1,
+              exp: xp.data.exp || 0
+            });
+          }
+        } catch {}
+      }
+
+      leaderboard.sort((a, b) => b.level - a.level || b.exp - a.exp);
+      const top10 = leaderboard.slice(0, 10);
+
+      let topMsg = "●─────── ✾ ───────●\n ⦿ ⟬ تَوبُ المًصَنَّفِينْ 🏆 ⟭ ⦿\n┝━━━━━━━━━━━━━━━\n";
+      const medals = ["🥇", "🥈", "🥉", "🏅", "🏅", "🏅", "🏅", "🏅", "🏅", "🏅"];
+
+      for (let idx = 0; idx < top10.length; idx++) {
+        const user = top10[idx];
+        const uName = await Users.getNameUser(user.uid);
+        topMsg += `┇ ${medals[idx]} ${idx + 1}. ${uName}\n┇ 🌟 المستَوى: ${user.level} | ${user.exp} XP\n┝━━━━━━━━━━━━━━━\n`;
+      }
+      topMsg += "👑 كُن الأفضل وتفاعل لتتصدر القائمة!\n●─────── ✾ ───────●";
+      return api.sendMessage(topMsg, threadID, messageID);
+    }
+
+    // ══════════════════════════════════════
+    // بطاقة الرانك الأساسية
     // ══════════════════════════════════════
     let targetID = senderID;
-
     const mentionIDs = Object.keys(mentions || {});
-
     if (mentionIDs.length) targetID = mentionIDs[0];
 
     if (isRankBanned(targetID)) {
-      return api.sendMessage(
-        "🚫 | هذا الشخص محظور من الرانك",
-        threadID,
-        messageID
-      );
+      return api.sendMessage("🚫 | هذا الشخص محظور من نظام الرانك", threadID, messageID);
     }
 
     const xp = await Exp.check(targetID);
@@ -773,14 +751,12 @@ module.exports.run = async function({
     const levelUpExp = xp?.data?.levelUpExp || 500;
 
     let ui = {};
-
     try {
       const r = await Users.find(targetID);
       if (r?.data?.data) ui = r.data.data;
     } catch {}
 
-    const name = ui.name || await Users.getNameUser(targetID);
-
+    const name = ui.name || (await Users.getNameUser(targetID));
     const cashR = await Economy.getBalance(targetID, "money");
     const bankR = await Economy.getBalance(targetID, "bank");
 
@@ -789,7 +765,6 @@ module.exports.run = async function({
       (typeof bankR === "number" ? bankR : bankR?.data || 0);
 
     const rankInfo = getRankTitle(level, ui.gender);
-
     let rankText = "#1";
 
     try {
@@ -799,7 +774,6 @@ module.exports.run = async function({
     } catch {}
 
     const customBg = getUserBg(targetID);
-
     const buffer = await buildRankCard({
       targetID,
       name,
@@ -813,145 +787,32 @@ module.exports.run = async function({
     });
 
     const filePath = path.join(process.cwd(), "cache", `rank_${Date.now()}.png`);
-
     fs.ensureDirSync(path.dirname(filePath));
     fs.writeFileSync(filePath, buffer);
 
-    await applyRankNickname({
-      api,
-      threadID,
-      targetID,
-      Users,
-      Exp,
-      Threads,
-      Economy
-    });
-
     return api.sendMessage(
-      {
-        body: "🪐 | بطاقة الرانك",
-        attachment: fs.createReadStream(filePath)
-      },
+      { body: "🪐 | بطاقة الرانك الشخصية الأسطورية", attachment: fs.createReadStream(filePath) },
       threadID,
       () => fs.remove(filePath),
       messageID
     );
 
   } catch (e) {
-
     console.log(e);
-
-    return api.sendMessage(
-      `❌ | خطأ:\n${e.message}`,
-      threadID,
-      messageID
-    );
+    return api.sendMessage(`❌ | حدث خطأ غير متوقع:\n${e.message}`, threadID, messageID);
   }
 };
 
 // ══════════════════════════════════════════
 // HANDLE REPLY
 // ══════════════════════════════════════════
-module.exports.handleReply = async function() {
+module.exports.handleReply = async function({ api, event, handleReply, Users, Economy, Exp, Threads }) {
   return;
 };
 
 // ══════════════════════════════════════════
-// EVENT
+// HANDLE EVENT
 // ══════════════════════════════════════════
-module.exports.handleEvent = async function({
-  api,
-  event,
-  Users,
-  Exp,
-  Threads,
-  Economy
-}) {
-
-  const {
-    threadID,
-    logMessageType,
-    logMessageData
-  } = event;
-
-  // عضو جديد
-  if (logMessageType === "log:subscribe") {
-
-    for (const p of logMessageData?.addedParticipants || []) {
-
-      const uid = p.userFbId || p.id;
-
-      if (!uid || uid == api.getCurrentUserID()) continue;
-
-      setTimeout(async () => {
-
-        await applyRankNickname({
-          api,
-          threadID,
-          targetID: uid,
-          Users,
-          Exp,
-          Threads,
-          Economy
-        });
-
-      }, 2000);
-    }
-  }
-
-  // حماية الكنية
-  if (logMessageType === "log:user-nickname") {
-
-    const { participant_id, nickname } = logMessageData;
-
-    if (String(event.author) === String(api.getCurrentUserID())) return;
-
-    if (_hasCooldown(participant_id, threadID)) return;
-
-    try {
-
-      const data = await Threads.getData(threadID);
-
-      if (!data?.rankNicknameMode) return;
-
-      const xp = await Exp.check(participant_id);
-      const level = xp?.data?.currentLevel || 1;
-
-      let ui = {};
-
-      try {
-        const r = await Users.find(participant_id);
-        if (r?.data?.data) ui = r.data.data;
-      } catch {}
-
-      const rankInfo = getRankTitle(level, ui.gender);
-
-      let correct;
-
-      if (data?.rankNicknameStyle) {
-
-        correct = buildCustomNickname(data.rankNicknameStyle, {
-          name: ui.name || "",
-          vanity: ui.vanity || "",
-          title: rankInfo.title,
-          level,
-          gender: ui.gender || "",
-          money: 0,
-          bank: 0,
-          warns: 0
-        });
-
-      } else {
-        correct = buildRankNickname(rankInfo.title, level);
-      }
-
-      if (nickname !== correct) {
-
-        _setCooldown(participant_id, threadID);
-
-        await api.changeNickname(correct, threadID, participant_id);
-      }
-
-    } catch {}
-  }
+module.exports.handleEvent = async function({ api, event, Users, Exp, Threads }) {
+  return;
 };

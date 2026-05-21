@@ -9,10 +9,10 @@ const marketPath = path.join(cacheDir, "market_data.json");
 
 module.exports.config = {
     name: "سوق",
-    version: "6.0.1",
+    version: "6.1.0",
     hasPermssion: 0,
     credits: "Abdou / RIO BOT",
-    description: "سوق ريو العظيم - اقتصاد متكامل متناسق مع موديول الـ Economy للنواة",
+    description: "سوق ريو العظيم - اقتصاد متكامل مصلح ومحمي بالكامل مع النواة",
     commandCategory: "اقتصاد",
     usages: "[دخول/اسعار/شراء/مزاد/مشروع/تحويل/مساعدة]",
     cooldowns: 3
@@ -38,7 +38,6 @@ function createDefaultMarketFile() {
     const factory = [];
     const raw = [];
 
-    // ───── طبيعي 50 ─────
     const naturalNames = [
         "تفاح","برتقال","موز","عنب","خوخ","تمر","رمان","ليمون","بطيخ","فراولة",
         "بطاطس","طماطم","خيار","جزر","فلفل","نعناع","ريحان","ورد","عسل","حليب",
@@ -57,7 +56,6 @@ function createDefaultMarketFile() {
         });
     });
 
-    // ───── مصنع 30 ─────
     const factoryNames = [
         "سيارة","حاسوب","هاتف","شاشة","ثلاجة","غسالة","دراجة","مكيف","كاميرا","سماعة",
         "ساعة","كرسي","طاولة","سرير","مصباح","روبوت","طيارة لعبة","مروحة","شاحن","لوحة",
@@ -74,7 +72,6 @@ function createDefaultMarketFile() {
         });
     });
 
-    // ───── خام 10 ─────
     const rawNames = [
         "ذهب خام", "ألماس خام", "يورانيوم", "بلاتين", "تيتانيوم",
         "نفط نادر", "كريستال أزرق", "ياقوت أحمر", "زمرد ملكي", "نيزك فضائي"
@@ -106,7 +103,6 @@ function createDefaultMarketFile() {
     fs.writeJsonSync(marketPath, data, { spaces: 2 });
 }
 
-// تحميل وتهيئة المجلد عند الإقلاع
 module.exports.onLoad = () => {
     if (!fs.existsSync(marketPath)) {
         createDefaultMarketFile();
@@ -119,7 +115,6 @@ module.exports.onLoad = () => {
 module.exports.run = async function({ api, event, args, Economy, Users }) {
     const { threadID, messageID, senderID } = event;
 
-    // 🛡️ فحص أمان فوري داخل الـ run لحل مشكلة ENOENT نهائياً
     if (!fs.existsSync(marketPath)) {
         createDefaultMarketFile();
     }
@@ -127,7 +122,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
     let market = fs.readJsonSync(marketPath);
     const action = (args[0] || "").toLowerCase();
 
-    // 📝 [أمر دخول]
     if (action === "دخول") {
         if (market.users[senderID]) {
             return api.sendMessage(
@@ -154,7 +148,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         );
     }
 
-    // 📚 [أمر مساعدة]
     if (action === "مساعدة") {
         const helpText = [
             row("📝", "سوق دخول", "التسجيل بالسوق والاستثمار"),
@@ -172,12 +165,10 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         return api.sendMessage(box("دليل سوق ريو الاستثماري", helpText), threadID, messageID);
     }
 
-    // ❌ حماية: يجب التسجيل أولاً قبل استخدام باقي الميزات الاقتصادية
     if (!market.users[senderID]) {
         return api.sendMessage("❌ | عذراً، يجب التسجيل أولاً في البورصة عبر كتابة: سوق دخول", threadID, messageID);
     }
 
-    // 📈 دالة تحديث الأسعار وتقلبات الأسهم التلقائية
     function updatePrices() {
         for (const cat in market.items) {
             market.items[cat].forEach(item => {
@@ -189,14 +180,12 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         }
     }
 
-    // 📊 [أمر أسعار البورصة]
     if (action === "اسعار") {
         updatePrices();
         let allItems = [];
         Object.values(market.items).forEach(arr => { allItems.push(...arr); });
         allItems.sort((a, b) => b.price - a.price);
 
-        // عرض تفصيلي لمنتج محدد
         if (args[1] === "عرض") {
             const id = parseInt(args[2]);
             const item = allItems.find(x => x.id === id);
@@ -226,7 +215,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         return api.sendMessage(box("أعلى 20 سهماً ومنتجاً في السوق", msg), threadID, messageID);
     }
 
-    // 🏷️ [أمر عرض الفئات فرعياً]
     if (action === "فئة") {
         const cat = args[1];
         if (!market.items[cat]) return api.sendMessage("❌ | الفئات الصحيحة هي: [ طبيعي / مصنع / خام ]", threadID, messageID);
@@ -239,7 +227,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         return api.sendMessage(box(`فئة منتجات: ${cat}`, text), threadID, messageID);
     }
 
-    // 🛒 [أمر شراء السلع المتناسق مع موديول الاقتصاد]
     if (action === "شراء") {
         const amount = parseInt(args[1]);
         const itemID = parseInt(args[2]);
@@ -263,7 +250,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
             return api.sendMessage(`❌ | رصيدك الحالي لا يكفي لإتمام هذه الصفقة!\n💰 التكلفة الكلية: ${totalCost.toLocaleString()}$\n💵 كاشك الحالي: ${userMoney.toLocaleString()}$`, threadID, messageID);
         }
 
-        // الخصم من النواة مباشرة
         await Economy.decrease(totalCost, senderID, "money");
 
         for (let i = 0; i < amount; i++) {
@@ -289,7 +275,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         );
     }
 
-    // 💰 [أمر حساب القيمة الحالية للأصول]
     if (action === "قيمة") {
         const inv = market.users[senderID].inventory;
         const userMoney = await Economy.getBalance(senderID, "money");
@@ -307,7 +292,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         );
     }
 
-    // 🏗️ [أمر إدارة المشاريع]
     if (action === "مشروع") {
         const sub = (args[1] || "").toLowerCase();
         const inv = market.users[senderID].inventory;
@@ -324,12 +308,11 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         }
 
         if (sub === "بيع") {
-            if (inv.length <= 0) return api.sendMessage("❌ | لا توجد أصول في مشروعك لبيعها وتصفيتها.", threadID, messageID);
+            if (inv.length <= 0) return api.sendMessage("❌ | لا توجد أصول in مشروعك لبيعها وتصفيتها.", threadID, messageID);
 
             let totalPayout = 0;
             inv.forEach(x => { totalPayout += x.price; });
 
-            // إيداع الأرباح في رصيد المستخدم بالنواة
             await Economy.increase(totalPayout, senderID, "money");
 
             market.users[senderID].inventory = [];
@@ -346,7 +329,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         }
     }
 
-    // 🔄 [أمر التحويل الفوري]
     if (action === "تحويل") {
         const inv = market.users[senderID].inventory;
         if (inv.length <= 0) return api.sendMessage("❌ | لا تملك أي ممتلكات في البورصة لتحويلها.", threadID, messageID);
@@ -367,7 +349,6 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
         );
     }
 
-    // 🔨 [أمر فتح المزاد العلني]
     if (action === "مزاد") {
         const itemToAuction = args.slice(1).join(" ");
         if (!itemToAuction) return api.sendMessage("⚠️ | يجب كتابة اسم السلعة المراد إطلاق المزاد عليها عيني!", threadID, messageID);
@@ -377,30 +358,51 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
             owner: senderID,
             highestBid: 0,
             bidder: null,
-            started: Date.now(),
-            end: Date.now() + 60000
+            started: Date.now()
         };
 
         fs.writeJsonSync(marketPath, market, { spaces: 2 });
 
-        return api.sendMessage(
+        const auctionNotice = await api.sendMessage(
             box("مزاد علني جديد", [
                 row("📦", "السلعة المعروضة", itemToAuction),
-                row("⏳", "المدة المتاحة", "60 ثانية"),
+                row("⏳", "المدة المتاحة", "60 ثانية للرد على هذه الرسالة"),
                 row("💰", "أعلى مزايدة", "0$")
             ].join("\n")),
-            threadID, (err, info) => {
-                if (err) return;
-
-                global.client.handleReply.push({
-                    name: module.exports.config.name,
-                    messageID: info.messageID,
-                    type: "auction",
-                    threadID,
-                    createdAt: Date.now()
-                });
-            }, messageID
+            threadID, messageID
         );
+
+        global.client.handleReply.push({
+            name: module.exports.config.name,
+            messageID: auctionNotice.messageID,
+            type: "auction",
+            threadID,
+            createdAt: Date.now(),
+            isEnded: false
+        });
+
+        // ⏱️ مصلح إنهاء المزاد التلقائي والآمن بعد دقيقة كاملة دون تعليق
+        setTimeout(async () => {
+            let currentMarket = fs.readJsonSync(marketPath);
+            const currentAuction = currentMarket.auctions[threadID];
+
+            const replyIndex = global.client.handleReply.find(r => r.messageID === auctionNotice.messageID);
+            if (replyIndex) replyIndex.isEnded = true;
+
+            if (currentAuction) {
+                if (currentAuction.highestBid === 0 || !currentAuction.bidder) {
+                    api.sendMessage(`🔨 | انتهى المزاد على [ ${currentAuction.item} ] دون تقديم أي عطاءات مادية.`, threadID);
+                } else {
+                    const winnerName = await Users.getNameUser(currentAuction.bidder);
+                    // تسليم الكاش لصاحب المزاد الأساسي حماية للاقتصاد
+                    await Economy.increase(currentAuction.highestBid, currentAuction.owner, "money");
+
+                    api.sendMessage(`🏆 | انتهى المزاد رسمياً! السلعة [ ${currentAuction.item} ] من نصيب [ ${winnerName} ] بمبلغ وقدره ${currentAuction.highestBid.toLocaleString()}$\n💰 تم تحويل المبلغ لمالك المزاد الأصلي.`, threadID);
+                }
+                delete currentMarket.auctions[threadID];
+                fs.writeJsonSync(marketPath, currentMarket, { spaces: 2 });
+            }
+        }, 60000);
     }
 };
 
@@ -409,25 +411,12 @@ module.exports.run = async function({ api, event, args, Economy, Users }) {
 // ═══════════════════════════════════════
 module.exports.handleReply = async function({ api, event, handleReply, Economy, Users }) {
     const { threadID, senderID, body, messageID } = event;
-    if (handleReply.type !== "auction") return;
+    if (handleReply.type !== "auction" || handleReply.isEnded) return;
 
     if (!fs.existsSync(marketPath)) return;
     let market = fs.readJsonSync(marketPath);
     const auction = market.auctions[threadID];
     if (!auction) return;
-
-    // التحكم في انتهاء وقت الـ 60 ثانية للمزاد
-    if (Date.now() - handleReply.createdAt > 60000) {
-        if (auction.highestBid === 0 || !auction.bidder) {
-            api.sendMessage(`🔨 | انتهى المزاد على [ ${auction.item} ] دون تقديم أي عطاءات.`, threadID);
-        } else {
-            const winnerName = await Users.getNameUser(auction.bidder);
-            api.sendMessage(`🏆 | انتهى المزاد رسمياً! السلعة [ ${auction.item} ] من نصيب [ ${winnerName} ] بمبلغ وقدره ${auction.highestBid.toLocaleString()}$`, threadID);
-        }
-        delete market.auctions[threadID];
-        fs.writeJsonSync(marketPath, market, { spaces: 2 });
-        return;
-    }
 
     const bid = parseInt(body.trim());
     if (isNaN(bid) || bid <= 0) return;
@@ -441,12 +430,12 @@ module.exports.handleReply = async function({ api, event, handleReply, Economy, 
         return api.sendMessage(`❌ | رصيدك لا يكفي لتقديم هذا العرض المالي. كاشك الحالي: ${bidderMoney.toLocaleString()}$`, threadID, messageID);
     }
 
-    // إرجاع أموال المزايد السابق إن وجد لحمايتها من الضياع
+    // إرجاع أموال المزايد السابق الفورية لحمايتها من الضياع
     if (auction.bidder) {
         await Economy.increase(auction.highestBid, auction.bidder, "money");
     }
 
-    // حجز مبلغ المزايد الجديد
+    // حجز مبلغ المزايد الحالي مؤقتاً لحين انتهاء التايمر الرسمي
     await Economy.decrease(bid, senderID, "money");
 
     auction.highestBid = bid;
@@ -455,11 +444,16 @@ module.exports.handleReply = async function({ api, event, handleReply, Economy, 
     fs.writeJsonSync(marketPath, market, { spaces: 2 });
 
     try {
-        api.unsendMessage(event.messageReply.messageID);
+        await api.unsendMessage(event.messageReply.messageID);
     } catch (e) {}
 
     const bidderName = await Users.getNameUser(senderID);
-    return api.sendMessage(`🔨 | مزايدة قياسية جديدة من [ ${bidderName} ] بقيمة: ${bid.toLocaleString()}$ ✨`, threadID);
+
+    const newNotice = await api.sendMessage(`🔨 | مزايدة قياسية جديدة من [ ${bidderName} ] بقيمة: ${bid.toLocaleString()}$ ✨\nقم بالرد هنا للمزايدة أعلى!`, threadID);
+
+    // نقل البيانات للرسالة الجديدة لمتابعة الريبلاي الديناميكي
+    handleReply.messageID = newNotice.messageID;
+    global.client.handleReply.push(handleReply);
 };
 
 // ═══════════════════════════════════════

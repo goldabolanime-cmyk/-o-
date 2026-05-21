@@ -1,4 +1,4 @@
-Const http = require("http");
+const http = require("http");
 const fs = require("fs-extra");
 const path = require("path");
 const { login } = require("ws3-fca");
@@ -17,8 +17,15 @@ try {
 const PREFIX = config.prefix || ".";
 const OWNER_IDS = (config.ownerBot || []).map(String);
 
-// مسار حفظ بادئات المجموعات (يتطابق مع أمر بادئة.js)
+// مسارات الكاش والملفات الخاصة بالبادئات والاستدعاء والحظر
 const prefixDataPath = path.join(__dirname, "modules", "commands", "cache", "threadPrefixes.json");
+const activatedGroupsPath = path.join(__dirname, "modules", "commands", "cache", "activatedGroups.json");
+const bansPath = path.join(__dirname, "modules", "commands", "cache", "bans.json");
+const assistantsPath = path.join(__dirname, "modules", "commands", "cache", "assistants.json");
+
+// التأكد من وجود ملفات الكاش الأساسية لمنع كراش التشغيل
+if (!fs.existsSync(path.dirname(bansPath))) fs.mkdirSync(path.dirname(bansPath), { recursive: true });
+if (!fs.existsSync(bansPath)) fs.writeJsonSync(bansPath, {});
 
 // ══════════════════════════════════════════
 // GLOBAL CLIENT
@@ -302,14 +309,78 @@ function getCtx(api, event) {
 async function handleMessage(api, event) {
   const { threadID, messageID, senderID, body, type, messageReply } = event;
 
-  // 🛡️ [جدار حماية التقييد والصيانة]
-  if (global.client.maintenance && global.client.maintenance.isRestricted) {
-    if (!OWNER_IDS.includes(String(senderID))) {
-      return; 
+  // 📥 [نظام الكاش الذكي لحفظ الأسماء وتجنب الـ UID]
+  if (senderID) {
+    try {
+      const usersData = readJSON(DB_PATH);
+      // التحقق مما إذا كان حقل الاسم المرسل من السوكيت متوفراً، وبأن المستخدم غير مسجل مسبقاً باسم صحيح
+      const currentPushName = event.senderName || event.pushName; 
+
+      if (currentPushName && (!usersData[String(senderID)] || !usersData[String(senderID)].name)) {
+        if (!usersData[String(senderID)]) usersData[String(senderID)] = {};
+        usersData[String(senderID)].name = currentPushName;
+        writeJSON(DB_PATH, usersData);
+      }
+    } catch (err) {
+      console.error("[AUTO PROFILE CACHE ERROR]", err.message);
     }
   }
 
+  const isOwner = OWNER_IDS.includes(String(senderID));
+
+  // جلب المساعدين للتحقق من الاستثناءات والقرارات الأمنية
+  let assistants = [];
+  try {
+    if (fs.existsSync(assistantsPath)) assistants = fs.readJsonSync(assistantsPath);
+  } catch(e){}
+  const isAssistant = assistants.includes(String(senderID));
+
+  // 🛑 [نظام التحقق الصارم من الحظر الشامل]
+  if (!isOwner && !isAssistant) {
+    try {
+      if (fs.existsSync(bansPath)) {
+        const bans = fs.readJsonSync(bansPath);
+        if (bans[String(senderID)]) {
+          const banData = bans[String(senderID)];
+
+          if (banData.type === "permanent" || banData.expiresAt > Date.now()) {
+            return; // تجاهل الرسالة تماماً وبصمت مطلق
+          } else {
+            delete bans[String(senderID)];
+            fs.writeJsonSync(bansPath, bans);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[BAN SYSTEM CHECK ERROR]", e.message);
+    }
+  }
+
+  // 🛡️ [جدار حماية التقييد والصيانة]
+  if (global.client.maintenance && global.client.maintenance.isRestricted) {
+    if (!isOwner) return;
+  }
+
   if (!body) return;
+
+  // 🛡️ [نظام حماية الاستدعاء المتقدم]
+  let activatedGroups = [];
+  try {
+    if (fs.existsSync(activatedGroupsPath)) {
+      activatedGroups = fs.readJsonSync(activatedGroupsPath);
+    }
+  } catch (e) {
+    console.error("[ACTIVATED GROUPS READ ERROR]", e.message);
+  }
+
+  const cleanBody = body.trim();
+  const lowerBody = cleanBody.toLowerCase();
+
+  const isCallCommand = lowerBody.startsWith("استدعاء") || lowerBody.startsWith(`${PREFIX}استدعاء`);
+
+  if (!activatedGroups.includes(String(threadID)) && !isOwner && !isCallCommand) {
+    return;
+  }
 
   try { await Exp.increase(senderID, Math.floor(Math.random() * 5) + 1); } catch {}
 
@@ -344,10 +415,6 @@ async function handleMessage(api, event) {
     }
   }
 
-  const cleanBody = body.trim();
-  const lowerBody = cleanBody.toLowerCase();
-
-  // ⚙️ [جلب ديناميكي لبادئة المجموعة الحالية]
   const currentSystemPrefix = config.prefix || PREFIX;
   let currentThreadPrefix = currentSystemPrefix;
 
@@ -362,13 +429,11 @@ async function handleMessage(api, event) {
     console.error("[THREAD PREFIX READ ERROR]", e.message);
   }
 
-  // ── 3. كود فحص البادئة المباشر بدون بريفكس المطور بناءً على بادئة المجموعة الحالية ──
   if (["بادئة", "البادئة", "prefix"].includes(lowerBody)) {
     const prefixMsg = `🌐 System prefix: ${currentSystemPrefix}\n🛸 Your box chat prefix: ${currentThreadPrefix}`;
     return api.sendMessage(prefixMsg, threadID, messageID);
   }
 
-  // ── 4. تشغيل أمر "مسح" بدون بادئة ──
   if (lowerBody === "مسح" || lowerBody === "حذف") {
     const cmd = global.client.commands.get("مسح");
     if (cmd) {
@@ -383,7 +448,6 @@ async function handleMessage(api, event) {
     }
   }
 
-  // ── 5. معالجة الأوامر بالبريفكس المتقدمة ──
   let hasValidPrefix = false;
   let commandString = cleanBody;
 
@@ -391,30 +455,25 @@ async function handleMessage(api, event) {
     hasValidPrefix = true;
     commandString = cleanBody.slice(currentThreadPrefix.length).trim();
   } else if (currentThreadPrefix === "") {
-    // وضع بدون بادئة مفتوح بالكامل
     hasValidPrefix = true;
     commandString = cleanBody;
   }
 
   if (!hasValidPrefix) return;
 
-  // ✨ التفاعل بريأكشن 😿 عند كتابة البريفكس المخصص فقط (إذا لم يكن فارغاً)
   if (currentThreadPrefix !== "" && cleanBody === currentThreadPrefix) {
     return api.setMessageReaction("😿", messageID, (err) => {
       if (err) console.error("[REACTION ERROR]", err);
     }, true);
   }
 
-  // فصل اسم الأمر والمصفوفة بشكل صحيح وآمن لتفادي دمج المتغيرات
   const args = commandString.split(/\s+/);
   const commandName = args.shift().toLowerCase();
   if (!commandName) return;
 
   const cmd = global.client.commands.get(commandName);
 
-  // نظام التخمين ورسائل الفشل المخصصة
   if (!cmd) {
-    // 🛡️ التعديل الجديد: إذا كانت البادئة فارغة ""، يتم الخروج فوراً وبصمت لتفادي إزعاج الشات العادي
     if (currentThreadPrefix === "") return;
 
     let bestMatch = "";
@@ -441,11 +500,11 @@ async function handleMessage(api, event) {
     }
   }
 
-  // فحص الصلاحيات
   const configData = cmd.config || cmd.default?.config;
   const perm = configData?.hasPermssion || 0;
-  if (perm >= 1 && !OWNER_IDS.includes(String(senderID))) {
-    return api.sendMessage("❌ | هذا الأمر للأوانر فقط", threadID, messageID);
+
+  if (perm >= 1 && !isOwner && !isAssistant) {
+    return api.sendMessage("⛔ | هذا الأمر متاح للمطورين فقط.", threadID, messageID);
   }
 
   const runFunc = cmd.run || cmd.default?.run;
@@ -469,6 +528,27 @@ async function handleEvent(api, event) {
     if (!OWNER_IDS.includes(String(event.senderID))) {
       return; 
     }
+  }
+
+  let assistants = [];
+  try {
+    if (fs.existsSync(assistantsPath)) assistants = fs.readJsonSync(assistantsPath);
+  } catch(e){}
+  const isOwner = OWNER_IDS.includes(String(event.senderID));
+  const isAssistant = assistants.includes(String(event.senderID));
+
+  if (!isOwner && !isAssistant && event.senderID) {
+    try {
+      if (fs.existsSync(bansPath)) {
+        const bans = fs.readJsonSync(bansPath);
+        if (bans[String(event.senderID)]) {
+          const banData = bans[String(event.senderID)];
+          if (banData.type === "permanent" || banData.expiresAt > Date.now()) {
+            return;
+          }
+        }
+      }
+    } catch(e){}
   }
 
   for (const [, ev] of global.client.events) {
