@@ -4,84 +4,106 @@ const path = require("path");
 module.exports.config = {
   name: "تصنيف",
   version: "1.0.0",
-  hasPermssion: 2, // مخصص للمطورين فقط لأنه يتحكم بصلاحيات الأوامر
+  hasPermssion: 2, // 👑 متاح للمطورين فقط بناءً على تهيئة الاندكس
   credits: "Abdou",
-  description: "تغيير صلاحية (hasPermssion) لأي أمر في السورس مباشرة",
+  description: "تغيير تصنيف وصلاحية أي أمر في البوت وحفظها تلقائياً",
   commandCategory: "المطور",
-  usages: "[اسم الأمر] [0 أو 1 == أو 2 أو 3]",
-  cooldowns: 5
+  usages: "[اسم الأمر] [0 أو 1 أو 2]",
+  cooldowns: 3
 };
 
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID } = event;
+  const { threadID, messageID } = event;
 
-  // 1️⃣ التأكد من المدخلات
-  const commandName = (args[0] || "").toLowerCase();
-  const newPerm = args[1];
+  const configPath = path.join(__dirname, "..", "..", "config.json");
 
-  if (!commandName || !newPerm) {
-    return api.sendMessage("⚠️ ┃ صيغة الأمر خاطئة!\n💡 ┃ الاستخدام: .تصنيف [اسم_الأمر] [الرقم]\nمثال: .تصنيف طرد 2", threadID, messageID);
+  // ──✨ الزخارف الموحدة الفخمة لـ ريم بوت ✨──
+  const header = "╭────── ⟪ 𝑹𝑬𝑴-𝑩𝑶𝑻 ⟫ ──────╮";
+  const footer = "╰────────────────────────╯";
+  const divider = " ────────── ⌬ ──────────";
+
+  // 1. التحقق من المدخلات
+  if (args.length < 2) {
+    return api.sendMessage(
+      `${header}\n` +
+      `       ⚙️ تـصـنـيـف الأوامـر ⚙️\n` +
+      `${divider}\n` +
+      `💡 | الاستخدام الصحيح للأمر:\n` +
+      `👈 .تصنيف [إسم الأمر] [رقم التصنيف]\n\n` +
+      `📊 | الأرقام المتاحة بالتوافق مع النواة:\n` +
+      `🔹 [ 0 ] ↜ متاح للجميع مجاناً\n` +
+      `🔹 [ 1 ] ↜ مسؤولين ومشرفين المجموعات\n` +
+      `🔹 [ 2 ] ↜ مطوري البوت فقط\n` +
+      `${footer}`, 
+      threadID, messageID
+    );
   }
 
-  // التأكد من أن الرقم المدخل صالح (0، 1، 2، 3)
-  if (!["0", "1", "2", "3"].includes(newPerm)) {
-    return api.sendMessage("⛔ ┃ رقم التصنيف غير صالح! يجب أن يكون (0 أو 1 أو 2 أو 3).\n0 ⟻ للجميع\n1 ⟻ للمشرفين\n2/3 ⟻ للمطورين", threadID, messageID);
+  const commandName = args[0].toLowerCase();
+  const newPermission = parseInt(args[1]);
+
+  // 2. التحقق من صحة رقم التصنيف المدخل
+  if (isNaN(newPermission) || ![0, 1, 2].includes(newPermission)) {
+    return api.sendMessage("❌ | رقم التصنيف غير صالح! يرجى اختيار إما 0 أو 1 أو 2 فقط.", threadID, messageID);
   }
 
-  // 2️⃣ تحديد مسار ملف الأمر المستهدف
-  // ملاحظة: قم بتعديل مسار المجلد لو كان مجلد الأوامر عندك باسم آخر (مثل commands أو modules)
-  const commandsDir = path.join(__dirname, ".."); 
-  let filePath = path.join(commandsDir, `${commandName}.js`);
-
-  // إذا لم يجده في المجلد الرئيسي، يبحث في المجلد الحالي (احتياطاً)
-  if (!fs.existsSync(filePath)) {
-    filePath = path.join(__dirname, `${commandName}.js`);
-  }
-
-  if (!fs.existsSync(filePath)) {
-    return api.sendMessage(`❌ ┃ لم يتم العثور على ملف باسم [ ${commandName}.js ] في مجلد الأوامر.`, threadID, messageID);
+  // 3. التحقق من وجود الأمر في ذاكرة البوت الحالية
+  if (!global.client.commands.has(commandName)) {
+    return api.sendMessage(`❌ | لا يوجد أمر مفعّل في البوت باسم "${commandName}".`, threadID, messageID);
   }
 
   try {
-    // 3️⃣ قراءة محتوى الملف وتعديله بالـ Regex الذكي
-    let fileContent = fs.readFileSync(filePath, "utf8");
+    // 4. جلب نسخة الأمر الحالية لتحديث الذاكرة المؤقتة (RAM)
+    const cmd = global.client.commands.get(commandName);
+    const configData = cmd.config || cmd.default?.config;
 
-    // ريجكس يبحث عن hasPermssion أو hasPermission ويقبض على الرقم بعدها
-    const permRegex = /(hasPermssion|hasPermission)\s*:\s*[0-3]/g;
-
-    if (!permRegex.test(fileContent)) {
-      return api.sendMessage("⚠️ ┃ لم يتم العثور على سطر صلاحية مألوف داخل إعدادات هذا الأمر (config).", threadID, messageID);
+    if (!configData) {
+      return api.sendMessage(`❌ | بنية أمر "${commandName}" لا تدعم تعديل التكوين.`, threadID, messageID);
     }
 
-    // استبدال القيمة القديمة بالقيمة الجديدة بدقة
-    const updatedContent = fileContent.replace(permRegex, `$1: ${newPerm}`);
+    // تحويل الأرقام الحالية والجديدة إلى نصوص واضحة في الرسالة
+    const getRoleName = (permLevel) => {
+      if (permLevel === 2) return "المطورين 👑";
+      if (permLevel === 1) return "مسؤولي المجموعات 🛡️";
+      return "الجميع 👤";
+    };
 
-    // كتابة التعديل داخل الملف
-    fs.writeFileSync(filePath, updatedContent, "utf8");
+    const oldPermission = configData.hasPermssion ?? 0;
+    const oldRole = getRoleName(oldPermission);
+    const newRole = getRoleName(newPermission);
 
-    // 4️⃣ إعادة تحميل الأمر في ذاكرة البوت الحية (Reload) لتفعيل التعديل فوراً
-    if (global.client && global.client.commands) {
-      // حذف الكاش القديم للملف من ذاكرة الـ Node.js
-      delete require.cache[require.resolve(filePath)];
+    // 5. تحديث الصلاحية في الذاكرة الحية فوراً (بدون إعادة تشغيل)
+    configData.hasPermssion = newPermission;
 
-      // جلب الملف المحدث
-      const updatedCommand = require(filePath);
-
-      // إعادة تسجيله في ماب الأوامر
-      global.client.commands.set(updatedCommand.config.name, updatedCommand);
-
-      // تحديث الأسماء المستعارة (Aliases) إذا وجدت
-      if (updatedCommand.config.aliases) {
-        for (const alias of updatedCommand.config.aliases) {
-          global.client.commands.set(alias, updatedCommand);
-        }
-      }
+    // 6. الحفظ التلقائي والدائم داخل ملف config.json لمنع الضياع
+    let currentConfig = {};
+    if (fs.existsSync(configPath)) {
+      currentConfig = fs.readJsonSync(configPath);
     }
 
-    return api.sendMessage(`✅ ┃ تم بنجاح تغيير تصنيف صلاحية أمر [ ${commandName} ] إلى: ${newPerm}\n⚙️ ┃ النظام قام بتحديث الملف وإعادة تحميله تلقائياً!`, threadID, messageID);
+    // إذا كان هناك قسم مخصص لتجاوزات الأوامر أو نقوم بتحديثه مباشرة
+    if (!currentConfig.commandConfig) currentConfig.commandConfig = {};
+    if (!currentConfig.commandConfig[commandName]) currentConfig.commandConfig[commandName] = {};
+
+    currentConfig.commandConfig[commandName].hasPermssion = newPermission;
+    fs.writeJsonSync(configPath, currentConfig, { spaces: 2 });
+
+    // 7. إرسال رسالة النجاح المزخرفة
+    const successMsg = 
+      `${header}\n` +
+      `      ⚙️ تـم تـعـديـل الـتـصـنـيـف ⚙️\n` +
+      `${divider}\n` +
+      `🔹 🪬 الأ مـر ↜ [ ${commandName} ]\n` +
+      `🔹 ⏳ مِـن تـصـنـيـف ↜ ${oldRole}\n` +
+      `🔹 🚀 إلـى تـصـنـيـف ↜ ${newRole}\n` +
+      `${divider}\n` +
+      `✅ | تم تحديث الصلاحية بنجاح وتطبيقها في الـ index وحفظها بالملفات.\n` +
+      `${footer}`;
+
+    return api.sendMessage(successMsg, threadID, messageID);
 
   } catch (error) {
-    console.error(error);
-    return api.sendMessage(`❌ ┃ حدث خطأ أثناء تعديل الملف: ${error.message}`, threadID, messageID);
+    console.error("[PERMISSION CMD ERROR]", error);
+    return api.sendMessage(`❌ | حدث خطأ أثناء محاولة حفظ التصنيف الجديد:\n${error.message}`, threadID, messageID);
   }
 };

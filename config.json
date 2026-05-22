@@ -1,11 +1,20 @@
 {
-  "ownerBot": ["100090081489341"],
-  "adminBot": ["100090081489341"],
+  "ownerBot": [
+    "100090081489341"
+  ],
+  "adminBot": [
+    "100090081489341"
+  ],
   "prefix": ".",
   "botName": "Bot",
   "language": "ar",
   "version": "20.0.0",
   "autoRestart": true,
   "encryptSt": false,
-  "DEV": false
+  "DEV": false,
+  "commandConfig": {
+    "اوامر": {
+      "hasPermssion": 0
+    }
+  }
 }

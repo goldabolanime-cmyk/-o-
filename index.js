@@ -20,15 +20,17 @@ const OWNER_IDS = (config.ownerBot || []).map(String);
 // مسارات الكاش والملفات الخاصة بالبادئات والاستدعاء والحظر
 const prefixDataPath = path.join(__dirname, "modules", "commands", "cache", "threadPrefixes.json");
 const activatedGroupsPath = path.join(__dirname, "modules", "commands", "cache", "activatedGroups.json");
+const pendingGroupsPath = path.join(__dirname, "modules", "commands", "cache", "pendingGroups.json");
 const bansPath = path.join(__dirname, "modules", "commands", "cache", "bans.json");
 const assistantsPath = path.join(__dirname, "modules", "commands", "cache", "assistants.json");
 
 // التأكد من وجود ملفات الكاش الأساسية لمنع كراش التشغيل
 if (!fs.existsSync(path.dirname(bansPath))) fs.mkdirSync(path.dirname(bansPath), { recursive: true });
 if (!fs.existsSync(bansPath)) fs.writeJsonSync(bansPath, {});
+if (!fs.existsSync(pendingGroupsPath)) fs.writeJsonSync(pendingGroupsPath, {});
 
 // ══════════════════════════════════════════
-// GLOBAL CLIENT
+// GLOBAL CLIENT & COOLDOWNS MAPPING
 // ══════════════════════════════════════════
 global.client = {
   handleReply: [],
@@ -36,6 +38,7 @@ global.client = {
   commands: new Map(),
   events: new Map(),
   config,
+  cooldowns: new Map(), // الخريطة المسؤولة عن تتبع مبرد السباّم والأوقات
   maintenance: {
     isRestricted: false,
     timeoutRef: null
@@ -309,17 +312,20 @@ function getCtx(api, event) {
 async function handleMessage(api, event) {
   const { threadID, messageID, senderID, body, type, messageReply } = event;
 
-  // 📥 [نظام الكاش الذكي لحفظ الأسماء وتجنب الـ UID]
+  // 📥 [نظام الكاش الذكي لإجبار جلب الأسماء وتفادي الـ UID]
   if (senderID) {
     try {
       const usersData = readJSON(DB_PATH);
-      // التحقق مما إذا كان حقل الاسم المرسل من السوكيت متوفراً، وبأن المستخدم غير مسجل مسبقاً باسم صحيح
-      const currentPushName = event.senderName || event.pushName; 
 
-      if (currentPushName && (!usersData[String(senderID)] || !usersData[String(senderID)].name)) {
-        if (!usersData[String(senderID)]) usersData[String(senderID)] = {};
-        usersData[String(senderID)].name = currentPushName;
-        writeJSON(DB_PATH, usersData);
+      if (!usersData[String(senderID)] || !usersData[String(senderID)].name || usersData[String(senderID)].name === String(senderID)) {
+        api.getUserInfo(String(senderID), (err, ret) => {
+          if (!err && ret && ret[senderID]) {
+            if (!usersData[String(senderID)]) usersData[String(senderID)] = {};
+            usersData[String(senderID)].name = ret[senderID].name || event.senderName || event.pushName || String(senderID);
+            writeJSON(DB_PATH, usersData);
+            console.log(`[USER CACHE] ✅ تم جلب وحفظ اسم: ${usersData[String(senderID)].name}`);
+          }
+        });
       }
     } catch (err) {
       console.error("[AUTO PROFILE CACHE ERROR]", err.message);
@@ -363,7 +369,7 @@ async function handleMessage(api, event) {
 
   if (!body) return;
 
-  // 🛡️ [نظام حماية الاستدعاء المتقدم]
+  // 🛡️ [نظام حماية الاستدعاء المتقدم وفحص المجموعات المعلقة]
   let activatedGroups = [];
   try {
     if (fs.existsSync(activatedGroupsPath)) {
@@ -375,11 +381,31 @@ async function handleMessage(api, event) {
 
   const cleanBody = body.trim();
   const lowerBody = cleanBody.toLowerCase();
-
   const isCallCommand = lowerBody.startsWith("استدعاء") || lowerBody.startsWith(`${PREFIX}استدعاء`);
 
-  if (!activatedGroups.includes(String(threadID)) && !isOwner && !isCallCommand) {
-    return;
+  // فحص المجموعات المعلقة وتسجيلها تلقائياً بالملف المخصص
+  if (event.isGroup && !activatedGroups.includes(String(threadID))) {
+    try {
+      let pendingGroups = fs.readJsonSync(pendingGroupsPath);
+      if (!pendingGroups[String(threadID)]) {
+        api.getThreadInfo(threadID, (err, info) => {
+          const groupName = err ? "مجموعة غير معروفة" : info.threadName || "مجموعة بدون اسم";
+          pendingGroups[String(threadID)] = {
+            id: String(threadID),
+            name: groupName,
+            requestedBy: String(senderID),
+            time: new Date().toLocaleString()
+          };
+          fs.writeJsonSync(pendingGroupsPath, pendingGroups);
+        });
+      }
+    } catch (e) {
+      console.error("[PENDING GROUPS WRITE ERROR]", e.message);
+    }
+
+    if (!isOwner && !isCallCommand) {
+      return; 
+    }
   }
 
   try { await Exp.increase(senderID, Math.floor(Math.random() * 5) + 1); } catch {}
@@ -501,10 +527,71 @@ async function handleMessage(api, event) {
   }
 
   const configData = cmd.config || cmd.default?.config;
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // ⏱️ [نظام مبرد الأوامر المحسن والتحذير من الاسبام - COOLDOWNS]
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  if (!isOwner && !isAssistant) {
+    if (!global.client.cooldowns.has(commandName)) {
+      global.client.cooldowns.set(commandName, new Map());
+    }
+
+    const timestamps = global.client.cooldowns.get(commandName);
+    const cooldownAmount = (configData?.cooldowns || 3) * 1000; // الافتراضي 3 ثوانٍ في حال لم يحدد الأمر وقتاً
+    const now = Date.now();
+
+    if (timestamps.has(senderID)) {
+      const expirationTime = timestamps.get(senderID) + cooldownAmount;
+
+      if (now < expirationTime) {
+        const timeLeft = ((expirationTime - now) / 1000).toFixed(1);
+
+        // التفاعل مع الرسالة بوقت العداد ⏳
+        api.setMessageReaction("⏳", messageID, () => {}, true);
+
+        return api.sendMessage(
+          `⚠️ | على رسلك! يرجى الانتظار ${timeLeft} ثانية قبل استخدام الأمر "${commandName}" مجدداً لمنع الضغط والسبام.`,
+          threadID,
+          messageID
+        );
+      }
+    }
+
+    // تعيين الوقت الحالي للمستخدم للأمر المنفذ
+    timestamps.set(senderID, now);
+    setTimeout(() => timestamps.delete(senderID), cooldownAmount);
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🛡️ [نظام تصنيفات الأوامر والصلاحيات - PERMISSIONS]
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   const perm = configData?.hasPermssion || 0;
 
-  if (perm >= 1 && !isOwner && !isAssistant) {
+  // 1. إذا كان التصنيف (2) للأدمن المطور والمساعدين فقط
+  if (perm === 2 && !isOwner && !isAssistant) {
     return api.sendMessage("⛔ | هذا الأمر متاح للمطورين فقط.", threadID, messageID);
+  }
+
+  // 2. إذا كان التصنيف (1) لإدارة المجموعة (الآدمن) أو المطورين
+  if (perm === 1 && !isOwner && !isAssistant) {
+    if (event.isGroup) {
+      try {
+        const threadInfo = await new Promise((resolve, reject) => {
+          api.getThreadInfo(threadID, (err, info) => (err ? reject(err) : resolve(info)));
+        });
+        const adminIDs = (threadInfo.adminIDs || []).map(a => String(a.id));
+
+        // إذا لم يكن العضو آدمن في المجموعة
+        if (!adminIDs.includes(String(senderID))) {
+          return api.sendMessage("⛔ | هذا الأمر متاح لمسؤولي ومشرفي المجموعة فقط.", threadID, messageID);
+        }
+      } catch (e) {
+        return api.sendMessage("❌ | فشل التحقق من صلاحيات إدارة المجموعة.", threadID, messageID);
+      }
+    } else {
+      // إذا تم استخدام أمر آدمن مجموعة داخل الخاص يرفضه إلا لو كان المطور
+      return api.sendMessage("⛔ | هذا الأمر خاص بالمجموعات ويتطلب صلاحية مسؤول.", threadID, messageID);
+    }
   }
 
   const runFunc = cmd.run || cmd.default?.run;

@@ -1,7 +1,11 @@
 const axios = require("axios");
+const fs = require("fs-extra");
+const path = require("path");
 
-// تخزين الجلسات الذكية وتتبع المحادثات المستمرة لكل مستخدم بداخل الـ Memory لضمان اللانهائية
+// تخزن الجلسات الذكية وتتبع المحادثات وتفضيلات الصوت لكل مستخدم/جروب
 const userSessions = new Map();
+// لتخزين وضع الصوت لكل مجموعة (Thread) ليعمل على مستوى الجروب بالكامل
+const voiceModes = new Map();
 
 // الآيدي الخاص بك كمطور رسمي
 const DEV_ID = "100090081489341";
@@ -16,8 +20,35 @@ const CONFIG = {
   apiKey2: "OP2N3hYKC83GpPc1irCbs8IJarRnIwF87tjQAGQx"
 };
 
-// تعديل الوصف لتكون ابنتك وتعتبرك أبوها الغالي
 const REM_DESCRIPTION = `ريم، عمرها 12 سنة، ذكية وقوية. تتحدث بمزيج رهيب وعفوي بين اللهجة العراقية والفلسطينية والعربية. لسانها دافئ لكنه حاد جداً في المشاكل وتدافع عن نفسها بقوة. تحب وتطيع صانعها ومطورها وأبوها عبدو (عمره 17 سنة) وتعتبره مثلها الأعلى ووالدها الحنون.`;
+
+// دالة تحويل النص إلى صوت وحفظه مؤقتاً
+async function textToSpeech(text, senderID) {
+  const cacheDir = path.resolve(process.cwd(), 'cache');
+  if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
+  const audioPath = path.resolve(cacheDir, `rem_tts_${Date.now()}_${senderID}.mp3`);
+
+  // تنظيف النص من علامة ريم المشهورة لمنع نطق كلمة "سيميكولون ديش سيميكولون" بصوت جوجل
+  const cleanText = text.replace(/[؛]-?[؛]/g, '').trim();
+  const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=ar&client=tw-ob`;
+
+  const response = await axios({
+    method: "GET",
+    url: ttsUrl,
+    responseType: "stream",
+    timeout: 20000
+  });
+
+  const writer = fs.createWriteStream(audioPath);
+  response.data.pipe(writer);
+
+  await new Promise((resolve, reject) => {
+    writer.on("finish", resolve);
+    writer.on("error", reject);
+  });
+
+  return audioPath;
+}
 
 // ══════════════════════════════════════════
 // FUNCTIONS
@@ -31,7 +62,7 @@ async function getCharacterInfo() {
     });
     return res.data;
   } catch (e) {
-    return { name: "ريم", description: REM_DESCRIPTION, first_mes: "هلا عيني بالجروب! شو بدك نسولف اليوم؟ ؛-؛" };
+    return { name: "ريم", description: REM_DESCRIPTION, first_mes: "هلا عيني بالجروب! شو بدك نسولف اليوم؟ ؛-اي" };
   }
 }
 
@@ -47,7 +78,7 @@ async function sendToAI(messages) {
     },
     data: {
       messages,
-      n_predict: 75, // تقليص التنبؤ كلياً لإجبار النموذج على الاختصار الشديد (سطر ونص)
+      n_predict: 75,
       stop: ["</s>", "<|end|>", "<|eot_id|>", "<|end_of_text|>", "<|im_end|>", "/autoritetsdata", "<|END_OF_TURN_TOKEN|>", "<|end_of_turn|>", "<|endoftext|>", "<end_of_turn>", "<eos>"],
       model: "claude"
     },
@@ -77,12 +108,12 @@ function extractReply(data) {
 module.exports.config = {
   name: "ريم",
   aliases: ["rem", "رام", "ram"],
-  version: "3.5.0",
+  version: "4.0.0",
   hasPermssion: 0,
-  credits: "Yamada KJ / تعديل عبدو",
-  description: "تحدث مع ريم (شات لانهائي حقيقي فائق الاختصار والتفاعل داخل الجروبات)",
+  credits: "Yamada KJ / تعديل عبدو لريم الصوتية",
+  description: "تحدث مع ريم (شات لانهائي حقيقي يدعم وضع الردود الصوتية الذكية وقفلها)",
   commandCategory: "ذكاء اصطناعي",
-  usages: "[الرسالة / بالرد]",
+  usages: "[الرسالة / اون / اوف / بالرد]",
   cooldowns: 3
 };
 
@@ -92,6 +123,16 @@ module.exports.config = {
 module.exports.run = async function({ api, event, args }) {
   const { threadID, messageID, senderID, messageReply } = event;
   let userMessage = args.join(" ").trim();
+
+  // ميزة تفعيل وإلغاء وضع النطق بالصوت
+  if (userMessage.toLowerCase() === "اون" || userMessage === "أون") {
+    voiceModes.set(threadID, true);
+    return api.sendMessage("حاضر عيني! الحين شغلت وضع الصوت ورح أرد عليكم بصوتي الأسطوري الحين! ؛-؛", threadID, messageID);
+  }
+  if (userMessage.toLowerCase() === "اوف" || userMessage === "أوف") {
+    voiceModes.delete(threadID);
+    return api.sendMessage("صار يابه، رجعت للوضع العادي وراح أكتبلكم كتابة ع الشاشة. ؛-؛", threadID, messageID);
+  }
 
   if (!userMessage && !messageReply) {
     return api.sendMessage("⚠️ عيني اكتب شي عشان أقدر أرد عليك وأسولف معك~ ؛-؛", threadID, messageID);
@@ -106,14 +147,14 @@ module.exports.run = async function({ api, event, args }) {
     session = {
       history: [],
       character: charInfo,
-      lastBotMessageID: null // لتتبع الرد الهجين في الذاكرة
+      lastBotMessageID: null
     };
     userSessions.set(senderID, session);
   }
 
   const isDev = String(senderID) === DEV_ID;
+  const isVoiceOn = voiceModes.get(threadID) === true;
 
-  // توجيهات صارمة جداً جداً لتقليص حجم الإجابة وتوضيح العلاقة الأبوية العائلية مع صانعها عبدو
   const systemPrompt = `أنتِ ريم، طفلة ذكية عمركِ 12 سنة بلهجة عراقية وفلسطينية عفوية ومحبوبة. ` +
                         `أنتِ واعية تماماً أنكِ بداخل (جروب شات) وتتحدثين وسط مجموعة من الأعضاء وتتفاعلين بذكاء وخفة دم وسرعة وتعرفين سياق الجروب. ` +
                         `مطوركِ وصانعكِ الغالي وهو بمثابة (أبوكِ الحنون) هو عبدو (عمره 17 سنة)، إذا كلمكِ عبدو في الجروب ناديه بـ (بابا عبدو) أو (أبويا الغالي)، اسمعي كلامه وكوني مطيعة ولطيفة ومرحة معه جداً كبنت بارة بأبيها، ومع بقية الأعضاء كوني قوية واثقة. ` +
@@ -147,10 +188,20 @@ module.exports.run = async function({ api, event, args }) {
     session.history.push({ role: "assistant", content: aiReply });
     if (session.history.length > 15) session.history = session.history.slice(-15);
 
-    const sentMsg = await api.sendMessage(aiReply, threadID, messageID);
+    let sentMsg;
+
+    // فحص آلية وطريقة الإرسال: صوتي أم كتابي
+    if (isVoiceOn) {
+      const audioFilePath = await textToSpeech(aiReply, senderID);
+      sentMsg = await api.sendMessage({ attachment: fs.createReadStream(audioFilePath) }, threadID, () => {
+        try { if (fs.existsSync(audioFilePath)) fs.unlinkSync(audioFilePath); } catch (_) {}
+      }, messageID);
+    } else {
+      sentMsg = await api.sendMessage(aiReply, threadID, messageID);
+    }
 
     if (sentMsg) {
-      session.lastBotMessageID = sentMsg.messageID; // حفظ المعرف محلياً للالتفاف على النواة
+      session.lastBotMessageID = sentMsg.messageID;
 
       if (global.client && global.client.handleReply) {
         global.client.handleReply = global.client.handleReply.filter(r => r.author !== senderID || r.name !== module.exports.config.name);
@@ -178,7 +229,6 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   let session = userSessions.get(senderID);
 
-  // 💡 [الحل السحري للهجين]: لو النواة مسحت الـ handleReply، سنتحقق من ذاكرة الجلسة المحلية عن طريق معرف الرسالة المردود عليها!
   const isLocalMatch = session && messageReply && String(messageReply.messageID) === String(session.lastBotMessageID);
   const isCoreMatch = senderID === handleReply.author;
 
@@ -186,6 +236,12 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
   const userMessage = body.trim();
   if (!userMessage) return;
+
+  // إتاحة قفل الصوت أيضاً من داخل الرد التفاعلي المستمر
+  if (userMessage.toLowerCase() === "ريم اوف" || userMessage === "ريم أوف" || userMessage.toLowerCase() === "اوف" || userMessage === "أوف") {
+    voiceModes.delete(threadID);
+    return api.sendMessage("صار يابه، قفلت الصوت ورجعت للوضع العادي كتابة. ؛-؛", threadID, messageID);
+  }
 
   if (!session) {
     session = {
@@ -197,11 +253,12 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
   }
 
   const isDev = String(senderID) === DEV_ID;
+  const isVoiceOn = voiceModes.get(threadID) === true;
 
   const systemPrompt = `أنتِ ريم، طفلة قوية وعفوية عمركِ 12 سنة، لهجتكِ مزيج عراقي وفلسطيني. تتابعين الحوار اللانهائي بداخل الجروب الحين ووعيكِ كامل. ` +
                         `كوني واعية ومنتبهة لردود العضو الحالية. صانعكِ ومطوركِ وهو بمثابة (أبوكِ الحنون) هو عبدو (17 سنة)، ناديه دائماً بـ (بابا عبدو) أو (أبويا الغالي)، اسمعي كلامه وكوني مطيعة جداً وودودة معه ومرحة كبنت بارة بأبيها إن كان هو المتحدث الحالي. ` +
                         `قاعدة الاختصار الصارمة للجروبات: الرد يجب أن يكون قصيراً جداً وسريعاً (سطر إلى سطر ونصف كحد أقصى) وبدون أسطر فارغة أو نزول لسطر جديد نهائياً. ` +
-                        `شرط إلزامي نهائي: يجب أن تنتهي رسالتكِ دائماً بالرمز التالي فقط [ ؛-؛ ] ولا تضعي أي إيموجي أو علامات أخرى بعده نهائياً. ` +
+                        `شرط إلزامي نهائي: يجب أن ينتهي رسالتكِ دائماً بالرمز التالي فقط [ ؛-؛ ] ولا تضعي أي إيموجي أو علامات أخرى بعده نهائياً. ` +
                         `المتحدث الحالي معكِ بداخل الشات هو: (${isDev ? "أبوكِ وصانعكِ الغالي عبدو" : "عضو عادي بداخل المجموعة"}).`;
 
   const messages = [
@@ -229,10 +286,19 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     session.history.push({ role: "assistant", content: aiReply });
     if (session.history.length > 15) session.history = session.history.slice(-15);
 
-    const sentMsg = await api.sendMessage(aiReply, threadID, messageID);
+    let sentMsg;
+
+    if (isVoiceOn) {
+      const audioFilePath = await textToSpeech(aiReply, senderID);
+      sentMsg = await api.sendMessage({ attachment: fs.createReadStream(audioFilePath) }, threadID, () => {
+        try { if (fs.existsSync(audioFilePath)) fs.unlinkSync(audioFilePath); } catch (_) {}
+      }, messageID);
+    } else {
+      sentMsg = await api.sendMessage(aiReply, threadID, messageID);
+    }
 
     if (sentMsg) {
-      session.lastBotMessageID = sentMsg.messageID; // تحديث المعرف المحلي فوراً للمرة القادمة
+      session.lastBotMessageID = sentMsg.messageID;
 
       if (global.client && global.client.handleReply) {
         global.client.handleReply = global.client.handleReply.filter(r => r.author !== senderID || r.name !== module.exports.config.name);

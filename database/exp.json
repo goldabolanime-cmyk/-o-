@@ -1,6 +1,6 @@
 {
   "61577272315598": {
-    "exp": 318,
+    "exp": 325,
     "currentLevel": 3,
     "levelUpExp": 720
   },
@@ -10,7 +10,7 @@
     "levelUpExp": 500
   },
   "100090081489341": {
-    "exp": 3,
+    "exp": 272,
     "currentLevel": 19,
     "levelUpExp": 1036
   },
@@ -20,7 +20,7 @@
     "levelUpExp": 500
   },
   "61576654040606": {
-    "exp": 197,
+    "exp": 202,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -80,7 +80,7 @@
     "levelUpExp": 500
   },
   "100089565191395": {
-    "exp": 336,
+    "exp": 385,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -180,7 +180,7 @@
     "levelUpExp": 500
   },
   "61585457137026": {
-    "exp": 162,
+    "exp": 201,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -240,7 +240,7 @@
     "levelUpExp": 500
   },
   "100081948980908": {
-    "exp": 139,
+    "exp": 146,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -280,7 +280,7 @@
     "levelUpExp": 500
   },
   "100090941401743": {
-    "exp": 66,
+    "exp": 72,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -355,7 +355,7 @@
     "levelUpExp": 500
   },
   "61573335506790": {
-    "exp": 65,
+    "exp": 67,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -495,7 +495,7 @@
     "levelUpExp": 500
   },
   "100079668997780": {
-    "exp": 19,
+    "exp": 20,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -505,6 +505,11 @@
     "levelUpExp": 500
   },
   "100094409873389": {
+    "exp": 1,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61589542623434": {
     "exp": 1,
     "currentLevel": 1,
     "levelUpExp": 500
