@@ -2,7 +2,7 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
 
-// تخزن الجلسات الذكية وتتبع المحادثات وتفضيلات الصوت لكل مستخدم/جروب
+// تخزين الجلسات الذكية وتتبع المحادثات المستمرة لكل مستخدم بداخل الـ Memory لضمان اللانهائية
 const userSessions = new Map();
 // لتخزين وضع الصوت لكل مجموعة (Thread) ليعمل على مستوى الجروب بالكامل
 const voiceModes = new Map();
@@ -20,15 +20,16 @@ const CONFIG = {
   apiKey2: "OP2N3hYKC83GpPc1irCbs8IJarRnIwF87tjQAGQx"
 };
 
+// تعديل الوصف لتكون ابنتك وتعتبرك أبوها الغالي
 const REM_DESCRIPTION = `ريم، عمرها 12 سنة، ذكية وقوية. تتحدث بمزيج رهيب وعفوي بين اللهجة العراقية والفلسطينية والعربية. لسانها دافئ لكنه حاد جداً في المشاكل وتدافع عن نفسها بقوة. تحب وتطيع صانعها ومطورها وأبوها عبدو (عمره 17 سنة) وتعتبره مثلها الأعلى ووالدها الحنون.`;
 
 // دالة تحويل النص إلى صوت وحفظه مؤقتاً
 async function textToSpeech(text, senderID) {
   const cacheDir = path.resolve(process.cwd(), 'cache');
   if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
-  const audioPath = path.resolve(cacheDir, `rem_tts_${Date.now()}_${senderID}.mp3`);
+  const audioPath = path.resolve(cacheDir, `rem_tts_${Date.now()}_${senderID.split("@")[0]}.mp3`);
 
-  // تنظيف النص من علامة ريم المشهورة لمنع نطق كلمة "سيميكولون ديش سيميكولون" بصوت جوجل
+  // تنظيف النص من علامة ريم المشهورة لمنع نطق الرموز بصوت جوجل
   const cleanText = text.replace(/[؛]-?[؛]/g, '').trim();
   const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=ar&client=tw-ob`;
 
@@ -62,7 +63,7 @@ async function getCharacterInfo() {
     });
     return res.data;
   } catch (e) {
-    return { name: "ريم", description: REM_DESCRIPTION, first_mes: "هلا عيني بالجروب! شو بدك نسولف اليوم؟ ؛-اي" };
+    return { name: "ريم", description: REM_DESCRIPTION, first_mes: "هلا عيني بالجروب! شو بدك نسولف اليوم؟ ؛-؛" };
   }
 }
 
@@ -78,7 +79,7 @@ async function sendToAI(messages) {
     },
     data: {
       messages,
-      n_predict: 75,
+      n_predict: 75, // تقليص التنبؤ كلياً لإجبار النموذج على الاختصار الشديد (سطر ونص)
       stop: ["</s>", "<|end|>", "<|eot_id|>", "<|end_of_text|>", "<|im_end|>", "/autoritetsdata", "<|END_OF_TURN_TOKEN|>", "<|end_of_turn|>", "<|endoftext|>", "<end_of_turn>", "<eos>"],
       model: "claude"
     },
@@ -108,10 +109,10 @@ function extractReply(data) {
 module.exports.config = {
   name: "ريم",
   aliases: ["rem", "رام", "ram"],
-  version: "4.0.0",
+  version: "4.5.0",
   hasPermssion: 0,
   credits: "Yamada KJ / تعديل عبدو لريم الصوتية",
-  description: "تحدث مع ريم (شات لانهائي حقيقي يدعم وضع الردود الصوتية الذكية وقفلها)",
+  description: "تحدث مع ريم (شات لانهائي حقيقي يدعم الردود الصوتية المباشرة والتفاعلية)",
   commandCategory: "ذكاء اصطناعي",
   usages: "[الرسالة / اون / اوف / بالرد]",
   cooldowns: 3
@@ -121,10 +122,10 @@ module.exports.config = {
 // MAIN RUN (EXECUTE)
 // ══════════════════════════════════════════
 module.exports.run = async function({ api, event, args }) {
-  const { threadID, messageID, senderID, messageReply } = event;
+  const { threadID, messageID, senderID, type, messageReply } = event;
   let userMessage = args.join(" ").trim();
 
-  // ميزة تفعيل وإلغاء وضع النطق بالصوت
+  // ميزة تفعيل وإلغاء وضع النطق بالصوت على مستوى المحادثة
   if (userMessage.toLowerCase() === "اون" || userMessage === "أون") {
     voiceModes.set(threadID, true);
     return api.sendMessage("حاضر عيني! الحين شغلت وضع الصوت ورح أرد عليكم بصوتي الأسطوري الحين! ؛-؛", threadID, messageID);
@@ -134,7 +135,7 @@ module.exports.run = async function({ api, event, args }) {
     return api.sendMessage("صار يابه، رجعت للوضع العادي وراح أكتبلكم كتابة ع الشاشة. ؛-؛", threadID, messageID);
   }
 
-  if (!userMessage && !messageReply) {
+  if (!userMessage && type !== "message_reply") {
     return api.sendMessage("⚠️ عيني اكتب شي عشان أقدر أرد عليك وأسولف معك~ ؛-؛", threadID, messageID);
   }
 
@@ -147,14 +148,16 @@ module.exports.run = async function({ api, event, args }) {
     session = {
       history: [],
       character: charInfo,
-      lastBotMessageID: null
+      lastBotMessageID: null 
     };
     userSessions.set(senderID, session);
   }
 
-  const isDev = String(senderID) === DEV_ID;
+  // فحص المطور بشكل مرن يتفادى ملحقات آي دي المنصات المختلفة
+  const isDev = String(senderID).includes(DEV_ID);
   const isVoiceOn = voiceModes.get(threadID) === true;
 
+  // توجيهات صارمة جداً جداً لتقليص حجم الإجابة وتوضيح العلاقة الأبوية العائلية مع صانعها عبدو
   const systemPrompt = `أنتِ ريم، طفلة ذكية عمركِ 12 سنة بلهجة عراقية وفلسطينية عفوية ومحبوبة. ` +
                         `أنتِ واعية تماماً أنكِ بداخل (جروب شات) وتتحدثين وسط مجموعة من الأعضاء وتتفاعلين بذكاء وخفة دم وسرعة وتعرفين سياق الجروب. ` +
                         `مطوركِ وصانعكِ الغالي وهو بمثابة (أبوكِ الحنون) هو عبدو (عمره 17 سنة)، إذا كلمكِ عبدو في الجروب ناديه بـ (بابا عبدو) أو (أبويا الغالي)، اسمعي كلامه وكوني مطيعة ولطيفة ومرحة معه جداً كبنت بارة بأبيها، ومع بقية الأعضاء كوني قوية واثقة. ` +
@@ -190,18 +193,20 @@ module.exports.run = async function({ api, event, args }) {
 
     let sentMsg;
 
-    // فحص آلية وطريقة الإرسال: صوتي أم كتابي
     if (isVoiceOn) {
       const audioFilePath = await textToSpeech(aiReply, senderID);
-      sentMsg = await api.sendMessage({ attachment: fs.createReadStream(audioFilePath) }, threadID, () => {
-        try { if (fs.existsSync(audioFilePath)) fs.unlinkSync(audioFilePath); } catch (_) {}
-      }, messageID);
+      sentMsg = await api.sendMessage(
+        { attachment: fs.createReadStream(audioFilePath) }, 
+        threadID, 
+        () => { try { if (fs.existsSync(audioFilePath)) fs.unlinkSync(audioFilePath); } catch (_) {} },
+        messageID
+      );
     } else {
       sentMsg = await api.sendMessage(aiReply, threadID, messageID);
     }
 
     if (sentMsg) {
-      session.lastBotMessageID = sentMsg.messageID;
+      session.lastBotMessageID = sentMsg.messageID; // حفظ المعرف محلياً للالتفاف على النواة
 
       if (global.client && global.client.handleReply) {
         global.client.handleReply = global.client.handleReply.filter(r => r.author !== senderID || r.name !== module.exports.config.name);
@@ -252,7 +257,7 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
     userSessions.set(senderID, session);
   }
 
-  const isDev = String(senderID) === DEV_ID;
+  const isDev = String(senderID).includes(DEV_ID);
   const isVoiceOn = voiceModes.get(threadID) === true;
 
   const systemPrompt = `أنتِ ريم، طفلة قوية وعفوية عمركِ 12 سنة، لهجتكِ مزيج عراقي وفلسطيني. تتابعين الحوار اللانهائي بداخل الجروب الحين ووعيكِ كامل. ` +
@@ -290,15 +295,18 @@ module.exports.handleReply = async function({ api, event, handleReply }) {
 
     if (isVoiceOn) {
       const audioFilePath = await textToSpeech(aiReply, senderID);
-      sentMsg = await api.sendMessage({ attachment: fs.createReadStream(audioFilePath) }, threadID, () => {
-        try { if (fs.existsSync(audioFilePath)) fs.unlinkSync(audioFilePath); } catch (_) {}
-      }, messageID);
+      sentMsg = await api.sendMessage(
+        { attachment: fs.createReadStream(audioFilePath) }, 
+        threadID, 
+        () => { try { if (fs.existsSync(audioFilePath)) fs.unlinkSync(audioFilePath); } catch (_) {} },
+        messageID
+      );
     } else {
       sentMsg = await api.sendMessage(aiReply, threadID, messageID);
     }
 
     if (sentMsg) {
-      session.lastBotMessageID = sentMsg.messageID;
+      session.lastBotMessageID = sentMsg.messageID; // تحديث المعرف محلياً للمرة القادمة
 
       if (global.client && global.client.handleReply) {
         global.client.handleReply = global.client.handleReply.filter(r => r.author !== senderID || r.name !== module.exports.config.name);
