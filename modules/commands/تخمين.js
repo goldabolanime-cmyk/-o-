@@ -76,11 +76,12 @@ module.exports.run = async function ({ api, event, args, Economy }) {
     if (err) return;
 
     global.client.handleReply.push({
-      name: this.config.name,
+      name: "تخمين",
       messageID: info.messageID,
       author: senderID,
       answer: character.name,
-      reward: reward
+      reward: reward,
+      createdAt: Date.now()
     });
 
     // مؤقت انتهاء الـ 60 ثانية

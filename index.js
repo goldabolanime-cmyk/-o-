@@ -427,7 +427,7 @@ async function handleMessage(api, event) {
         }
       }
       global.client.handleReply = global.client.handleReply.filter(r =>
-        Date.now() - (r.createdAt || 0) < 5 * 60 * 1000
+        !r.createdAt || (Date.now() - r.createdAt < 10 * 60 * 1000)
       );
       return;
     }

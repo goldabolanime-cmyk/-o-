@@ -224,32 +224,29 @@ module.exports.run = async function({ api, event, Economy }) {
                         `✍ رد بالإجابة سريعاً!\n` +
                         `🧩 ❯───────────❮ 🧩`;
 
-  const sentMsg = await api.sendMessage(challengeMsg, threadID, messageID);
+  api.sendMessage(challengeMsg, threadID, (err, info) => {
+    if (err || !info) return;
 
-  if (sentMsg) {
     // دفع معطيات اللغز بداخل مصفوفة الـ handleReply للتحقق اللاحق
     global.client.handleReply.push({
       name: module.exports.config.name,
-      messageID: sentMsg.messageID,
+      messageID: info.messageID,
       correctAnswers: randomRiddle.answers,
       reward: rewardMoney,
-      isEnded: false
+      isEnded: false,
+      createdAt: Date.now()
     });
 
     // وضع مؤقت (تايمر) مدته دقيقة واحدة (60000 مللي ثانية) لإنهاء اللغز وحذف الرسالة
     setTimeout(async () => {
-      // البحث عن جلسة اللغز الحالية بداخل النواة
-      const index = global.client.handleReply.findIndex(r => r.messageID === sentMsg.messageID);
+      const index = global.client.handleReply.findIndex(r => r.messageID === info.messageID);
       if (index !== -1 && !global.client.handleReply[index].isEnded) {
         global.client.handleReply[index].isEnded = true;
-
-        // حذف رسالة اللغز لمنع الإجابات المتأخرة والسبام
-        try { await api.unsendMessage(sentMsg.messageID); } catch (e) {}
-
-        return api.sendMessage("⏳ | انتهت الدقيقة ولم ينجح أحد في حل اللغز في الوقت المحدد!", threadID);
+        try { await api.unsendMessage(info.messageID); } catch (e) {}
+        api.sendMessage("⏳ | انتهت الدقيقة ولم ينجح أحد في حل اللغز في الوقت المحدد!", threadID);
       }
     }, 60000);
-  }
+  }, messageID);
 };
 
 // ══════════════════════════════════════════

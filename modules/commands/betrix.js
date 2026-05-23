@@ -93,13 +93,13 @@ module.exports.handleReply = async function({ api, event, handleReply, Currencie
             try { api.unsendMessage(handleReply.messageID); } catch(e) {}
 
             return api.sendMessage(BOX("شِرَاءُ البِيتْريكس 📥", ["يرجى إرسال الكمية المراد شراؤها الآن عبر الرد على هذه الرسالة.", "مثال: 0.5 أو 10"]), threadID, (err, info) => {
-                global.client.handleReply.push({ name: this.config.name, messageID: info.messageID, author: senderID, step: "buy" });
+                if (!err && info) global.client.handleReply.push({ name: "بيتريكس", messageID: info.messageID, author: senderID, step: "buy", createdAt: Date.now() });
             }, messageID);
         } else if (input == "2") {
             try { api.unsendMessage(handleReply.messageID); } catch(e) {}
 
             return api.sendMessage(BOX("بَيْعُ البِيتْريكس 📤", ["يرجى إرسال الكمية المراد بيعها الآن عبر الرد على هذه الرسالة.", "مثال: 0.2 أو 1"]), threadID, (err, info) => {
-                global.client.handleReply.push({ name: this.config.name, messageID: info.messageID, author: senderID, step: "sell" });
+                if (!err && info) global.client.handleReply.push({ name: "بيتريكس", messageID: info.messageID, author: senderID, step: "sell", createdAt: Date.now() });
             }, messageID);
         } else {
             return api.sendMessage("⚠️ خيار غير صحيح! يرجى الرد برقم [1] للشراء أو [2] للبيع.", threadID, messageID);
@@ -205,7 +205,7 @@ ${smartGraph}
           "",
           "💡 يرجى الرد على هذه الرسالة برقم العملية المطلوبة."
         ]), threadID, (err, info) => {
-            global.client.handleReply.push({ name: this.config.name, messageID: info.messageID, author: senderID, step: "choose" });
+            if (!err && info) global.client.handleReply.push({ name: "بيتريكس", messageID: info.messageID, author: senderID, step: "choose", createdAt: Date.now() });
         }, messageID);
     }
 };
