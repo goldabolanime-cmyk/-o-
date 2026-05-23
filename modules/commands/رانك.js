@@ -321,7 +321,8 @@ async function loadImg(url) {
       headers: { "User-Agent": "Mozilla/5.0" }
     });
 
-    if (!res.headers["content-type"]?.includes("image"))
+    const ct = res.headers["content-type"] || "";
+    if (ct.includes("text/html") || ct.includes("application/json"))
       return null;
 
     const tmp = path.join(process.cwd(), "cache", `tmp_${Date.now()}.png`);
@@ -404,7 +405,7 @@ async function buildRankCard({
   const ay = 230;
   const r = 100;
 
-  const avatar = await loadImg(`https://graph.facebook.com/${targetID}/picture?height=512&width=512`);
+  const avatar = await loadImg(`https://graph.facebook.com/${targetID}/picture?width=720&height=720&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`);
 
   if (avatar) {
     ctx.save();
