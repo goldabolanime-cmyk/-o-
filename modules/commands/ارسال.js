@@ -1,17 +1,26 @@
 module.exports.config = {
   name: "ارسال",
   aliases: ["dm", "رسالة"],
-  version: "1.0.0",
+  version: "1.1.0",
   hasPermssion: 2,
   credits: "REM BOT",
-  description: "إرسال رسالة خاصة لمستخدم معين عبر معرفه",
+  description: "إرسال رسالة خاصة لمستخدم معين عبر معرفه في الماسنجر",
   commandCategory: "مدير",
   usages: "[معرف المستخدم] [الرسالة]",
   cooldowns: 5
 };
 
+function parseError(err) {
+  if (!err) return "خطأ غير معروف";
+  if (typeof err === "string") return err;
+  if (err.message) return err.message;
+  if (err.error) return String(err.error);
+  if (err.errorSummary) return err.errorSummary;
+  try { return JSON.stringify(err); } catch (_) { return String(err); }
+}
+
 module.exports.run = async function ({ api, event, args }) {
-  const { threadID, messageID, senderID } = event;
+  const { threadID, messageID } = event;
 
   if (args.length < 2) {
     return api.sendMessage(
@@ -41,10 +50,17 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     await new Promise((resolve, reject) => {
-      api.sendMessage(message, targetID, (err, info) => {
-        if (err) return reject(err);
-        resolve(info);
-      });
+      api.sendMessage(
+        { body: message },
+        targetID,
+        (err, info) => {
+          if (err) {
+            console.error("[ارسال ERROR] raw:", JSON.stringify(err));
+            return reject(err);
+          }
+          resolve(info);
+        }
+      );
     });
 
     return api.sendMessage(
@@ -58,10 +74,14 @@ module.exports.run = async function ({ api, event, args }) {
       messageID
     );
   } catch (err) {
-    console.error("[ارسال ERROR]", err.message);
+    const errText = parseError(err);
+    console.error("[ارسال ERROR] parsed:", errText);
     return api.sendMessage(
-      `❌ ┋ فشل إرسال الرسالة!\n` +
-      `📛 ┋ الخطأ: ${err.message}`,
+      "✦〘•ما 𝑹𝑬𝑴-𝑩𝑶𝑻 ما•〙✦\n\n" +
+      "❌ ┋ فشل إرسال الرسالة!\n" +
+      "───── · · · ✦ · · · ─────\n" +
+      `📛 ┋ السبب: ${errText}\n` +
+      "───── · · · ✦ · · · ─────",
       threadID,
       messageID
     );
