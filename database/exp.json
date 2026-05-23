@@ -225,7 +225,7 @@
     "levelUpExp": 500
   },
   "61587013097234": {
-    "exp": 166,
+    "exp": 167,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -265,7 +265,7 @@
     "levelUpExp": 500
   },
   "61563738496733": {
-    "exp": 122,
+    "exp": 138,
     "currentLevel": 1,
     "levelUpExp": 500
   },
@@ -521,6 +521,11 @@
   },
   "61589970883332": {
     "exp": 2,
+    "currentLevel": 1,
+    "levelUpExp": 500
+  },
+  "61582811941981": {
+    "exp": 7,
     "currentLevel": 1,
     "levelUpExp": 500
   }

@@ -122,7 +122,7 @@ module.exports.run = async function({ api, event, args, Users }) {
 
     return api.sendMessage(
       box("👑 تمت السيطرة", 
-        `${row("🛡️", "القائد الجديد", "Abdou / RIO BOOT")}\n` +
+        `${row("🛡️", "القائد الجديد", "REM BOT 👑")}\n` +
         `${row("🧹", "تم تنزيلهم", `${successCount} عضو`)}\n` +
         `${row("⚠️", "فشل تنزيل", `${failCount} عضو (ربما البوت أقل منهم)`)}`
       ), 

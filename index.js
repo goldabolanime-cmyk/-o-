@@ -537,7 +537,7 @@ async function handleMessage(api, event) {
     }
 
     const timestamps = global.client.cooldowns.get(commandName);
-    const cooldownAmount = (configData?.cooldowns || 3) * 1000; // الافتراضي 3 ثوانٍ في حال لم يحدد الأمر وقتاً
+    const cooldownAmount = Math.max((configData?.cooldowns ?? 5), 5) * 1000; // الحد الأدنى 5 ثوانٍ لمنع السبام
     const now = Date.now();
 
     if (timestamps.has(senderID)) {
@@ -712,6 +712,18 @@ function startBot() {
 
     loadCommands();
     loadEvents();
+
+    // ══════════════════════════════════════════
+    // ⏰ تايمر الأذكار المجدولة (كل دقيقة)
+    // ══════════════════════════════════════════
+    setInterval(async () => {
+      try {
+        const azkarCmd = global.client.commands.get("اذكار");
+        if (!azkarCmd) return;
+        const eventFunc = azkarCmd.handleEvent || azkarCmd.default?.handleEvent;
+        if (eventFunc) await eventFunc({ api, event: {} });
+      } catch {}
+    }, 60 * 1000);
 
     console.log("[BOT] 🟢 البوت يستمع للرسائل...\n");
 

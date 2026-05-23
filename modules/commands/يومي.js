@@ -57,7 +57,7 @@ module.exports.run = async function ({ api, event, Currencies, Users }) {
   dailyData[senderID] = now;
   saveDaily(dailyData);
 
-  await Currencies.increaseMoney(senderID, amount);
+  await Currencies.increase(amount, senderID, "money");
   const name = await Users.getNameUser(senderID);
   const balance = (await Currencies.getData(senderID))?.money || 0;
 

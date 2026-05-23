@@ -23,8 +23,9 @@ module.exports.run = async function ({ api, event, Users }) {
     targetID = messageReply.senderID;
   }
 
-  if (!fs.existsSync(__dirname + "/cache")) fs.mkdirSync(__dirname + "/cache", { recursive: true });
-  const imgPath = __dirname + `/cache/avatar_${targetID}.jpg`;
+  const cacheDir = require("path").join(process.cwd(), "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+  const imgPath = require("path").join(cacheDir, `avatar_${targetID}.jpg`);
 
   try {
     const name = await Users.getNameUser(targetID).catch(() => "مستخدم");

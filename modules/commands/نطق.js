@@ -31,8 +31,9 @@ module.exports.run = async function ({ api, event, args }) {
     text = args.slice(1).join(" ");
   }
 
-  if (!fs.existsSync(__dirname + "/cache")) fs.mkdirSync(__dirname + "/cache", { recursive: true });
-  const audioPath = __dirname + `/cache/tts_${event.senderID}.mp3`;
+  const cacheDir = require("path").join(process.cwd(), "cache");
+  if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+  const audioPath = require("path").join(cacheDir, `tts_${event.senderID}.mp3`);
 
   try {
     const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=tw-ob`;
