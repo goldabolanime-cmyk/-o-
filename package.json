@@ -1,14 +1,15 @@
 {
-  "name": "facebook-bot",
+  "name": "fbbot",
   "version": "20.0.0",
-  "description": "Facebook Messenger Bot",
+  "description": "facebook messenger bot",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "npm-install": "npm install"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "@vitalets/google-translate-api": "^9.2.1",
+    "@vitalets/google-translate-api": "^9.2.0",
     "axios": "^1.16.1",
     "canvas": "^2.11.2",
     "fluent-ffmpeg": "^2.1.3",
